@@ -6,7 +6,6 @@
   <title>Frome Geek Gaming 40K Tables</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -87,23 +86,15 @@
   </style>
 </head>
 <body>
+
   <h1>Frome Geek Gaming 40K Tables</h1>
   <input type="date" id="bookingDate" />
   <input type="text" id="playerName" placeholder="Enter your name" />
 
   <div id="tablesContainer"></div>
 
-  <div style="margin-top: 20px">
-    <select id="exportRange">
-      <option value="day">Download Day</option>
-      <option value="week">Download Week</option>
-      <option value="month">Download Month</option>
-      <option value="year">Download Year</option>
-    </select>
-    <button onclick="exportBookingsToExcel()">Download Excel</button>
-  </div>
-
   <script>
+    // ✅ Your Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
       authDomain: "fgg-table-booking.firebaseapp.com",
@@ -171,12 +162,66 @@
 
       const day = getDayName(currentDate);
 
+      // Tunnels – Only on Tuesdays
       if (day === "Tuesday") {
-        renderSection("The Tunnels", tunnelsTables, "tunnels", container);
+        const section = document.createElement("div");
+        section.className = "section-wrapper";
+        section.innerHTML = <h2 class="section-title">The Tunnels</h2>;
+        const tableRow = document.createElement("div");
+        tableRow.className = "tables";
+
+        for (let i = 0; i < tunnelsTables; i++) {
+          const tableKey = tunnels_table${i};
+          const isBooked = allBookings[tableKey];
+          const name = isBooked || "";
+
+          const div = document.createElement("div");
+          div.className = "table";
+          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+          const buttonLabel = isBooked ? "Unbook" : "Book Now";
+
+          div.innerHTML = 
+            <h3>Table ${i + 1}</h3>
+            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
+            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
+            <button class="${buttonClass}" onclick="toggleBooking('tunnels', ${i})">${buttonLabel}</button>
+          ;
+          tableRow.appendChild(div);
+        }
+
+        section.appendChild(tableRow);
+        container.appendChild(section);
       }
 
+      // Crown – Only on Mondays
       if (day === "Monday") {
-        renderSection("The Crown", crownTables, "crown", container);
+        const section = document.createElement("div");
+        section.className = "section-wrapper";
+        section.innerHTML = <h2 class="section-title">The Crown</h2>;
+        const tableRow = document.createElement("div");
+        tableRow.className = "tables";
+
+        for (let i = 0; i < crownTables; i++) {
+          const tableKey = crown_table${i};
+          const isBooked = allBookings[tableKey];
+          const name = isBooked || "";
+
+          const div = document.createElement("div");
+          div.className = "table";
+          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+          const buttonLabel = isBooked ? "Unbook" : "Book Now";
+
+          div.innerHTML = 
+            <h3>Table ${i + 1}</h3>
+            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
+            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
+            <button class="${buttonClass}" onclick="toggleBooking('crown', ${i})">${buttonLabel}</button>
+          ;
+          tableRow.appendChild(div);
+        }
+
+        section.appendChild(tableRow);
+        container.appendChild(section);
       }
 
       if (day !== "Monday" && day !== "Tuesday") {
@@ -184,66 +229,7 @@
       }
     }
 
-    function renderSection(title, count, area, container) {
-      const section = document.createElement("div");
-      section.className = "section-wrapper";
-      section.innerHTML = <h2 class="section-title">${title}</h2>;
-      const tableRow = document.createElement("div");
-      tableRow.className = "tables";
-
-      for (let i = 0; i < count; i++) {
-        const tableKey = ${area}_table${i};
-        const isBooked = allBookings[tableKey];
-        const name = isBooked || "";
-
-        const div = document.createElement("div");
-        div.className = "table";
-        const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-        const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-        div.innerHTML = 
-          <h3>Table ${i + 1}</h3>
-          <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-          ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
-          <button class="${buttonClass}" onclick="toggleBooking('${area}', ${i})">${buttonLabel}</button>
-        ;
-        tableRow.appendChild(div);
-      }
-
-      section.appendChild(tableRow);
-      container.appendChild(section);
-    }
-
-    async function exportBookingsToExcel() {
-      const range = document.getElementById("exportRange").value;
-      const baseDate = new Date(document.getElementById("bookingDate").value);
-      const dateList = [];
-
-      for (let i = 0; i < (range === 'week' ? 7 : range === 'month' ? 31 : range === 'year' ? 366 : 1); i++) {
-        const d = new Date(baseDate);
-        d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        dateList.push(dateStr);
-      }
-
-      const bookingsSnapshot = await Promise.all(
-        dateList.map(date => db.ref(bookings/${date}).get().then(snap => ({ date, data: snap.val() || {} })))
-      );
-
-      const rows = [["Date", "Area", "Table", "Booked By"]];
-      bookingsSnapshot.forEach(({ date, data }) => {
-        Object.entries(data).forEach(([key, value]) => {
-          const [area, table] = key.split("_table");
-          rows.push([date, area, Table ${parseInt(table) + 1}, value]);
-        });
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Bookings");
-      XLSX.writeFile(wb, bookings_${range}_${getTodayDate()}.xlsx);
-    }
-
+    // Initial load
     listenForBookings();
   </script>
 
