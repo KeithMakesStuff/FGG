@@ -233,5 +233,41 @@
     listenForBookings();
   </script>
 
+   <!-- 🎲 DICE ROLLER SECTION -->
+  <div style="margin-top: 60px;">
+    <h2 style="color: #00ccff;">D6 Dice Roller</h2>
+    <input type="number" id="numDice" placeholder="Number of Dice" min="1" max="100" style="margin: 5px; width: 160px;" />
+    <input type="number" id="modifier" placeholder="Modifier (e.g. +1)" style="margin: 5px; width: 160px;" />
+    <button onclick="rollDice()" style="margin: 10px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
+    
+    <div id="diceResults" style="margin-top: 20px; font-size: 16px;"></div>
+  </div>
+
+  <script>
+    function rollDice() {
+      const numDice = parseInt(document.getElementById("numDice").value);
+      const modifier = parseInt(document.getElementById("modifier").value) || 0;
+      const resultDiv = document.getElementById("diceResults");
+
+      if (isNaN(numDice) || numDice <= 0) {
+        resultDiv.innerHTML = "<p>Please enter a valid number of dice.</p>";
+        return;
+      }
+
+      const rolls = [];
+      for (let i = 0; i < numDice; i++) {
+        const roll = Math.floor(Math.random() * 6) + 1;
+        rolls.push(roll + modifier);
+      }
+
+      const total = rolls.reduce((sum, val) => sum + val, 0);
+
+      resultDiv.innerHTML = `
+        <p><strong>Rolls:</strong> ${rolls.join(", ")}</p>
+        <p><strong>Total:</strong> ${total}</p>
+      `;
+    }
+  </script>
+  
 </body>
 </html>
