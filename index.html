@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Frome Geek Gaming 40K Tables</title>
+  <title>Frome Geek Gaming 40K Tables & Attack Resolver</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #1a1a1a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
       color: #f0f0f0;
       text-align: center;
       padding: 20px;
@@ -19,6 +18,7 @@
     h1 {
       color: #00ff99;
       margin-bottom: 10px;
+      font-size: 32px;
     }
 
     h2.section-title {
@@ -36,11 +36,12 @@
     }
 
     .table {
-      background-color: #333;
+      background-color: #1f1f1f;
       border: 2px solid #00ff99;
       padding: 20px;
-      width: 200px;
-      border-radius: 10px;
+      width: 220px;
+      border-radius: 12px;
+      box-shadow: 0 0 8px #00ff9966;
     }
 
     button {
@@ -49,6 +50,11 @@
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
+      transition: transform 0.2s ease, background-color 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
     }
 
     .book-btn {
@@ -61,18 +67,15 @@
       color: #fff;
     }
 
-    input[type="date"], input[type="text"] {
+    input[type="date"], input[type="text"], input[type="number"], select {
       padding: 10px;
       font-size: 16px;
-      margin-bottom: 15px;
+      margin: 8px;
       border-radius: 5px;
-      border: 1px solid #00ff99;
-      background-color: #1a1a1a;
+      border: 1px solid #00ccff;
+      background-color: #1e1e1e;
       color: #f0f0f0;
-      width: 200px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
+      width: 180px;
     }
 
     .booked-by {
@@ -84,468 +87,84 @@
     .section-wrapper {
       margin-top: 30px;
     }
+
+    .inline {
+      display: inline-block;
+      margin: 5px;
+    }
+
+    #basicFields input,
+    #advancedFields input,
+    #advancedFields select {
+      margin: 6px;
+    }
+
+    #whDiceResults {
+      background-color: #1e1e1e;
+      padding: 15px;
+      margin: 20px auto;
+      border-radius: 10px;
+      max-width: 700px;
+      box-shadow: 0 0 10px #00ccff33;
+      text-align: left;
+    }
+
+    #whDiceResults p {
+      margin: 5px 0;
+    }
   </style>
 </head>
 <body>
+
   <h1>Frome Geek Gaming 40K Tables</h1>
   <input type="date" id="bookingDate" />
   <input type="text" id="playerName" placeholder="Enter your name" />
 
   <div id="tablesContainer"></div>
 
-  <div style="margin-top: 20px">
-    <select id="exportRange">
-      <option value="day">Download Day</option>
-      <option value="week">Download Week</option>
-      <option value="month">Download Month</option>
-      <option value="year">Download Year</option>
-    </select>
-    <button onclick="exportBookingsToExcel()">Download Excel</button>
+  <!-- 🎲 Simple Dice Roller -->
+  <div style="margin-top: 60px;">
+    <h2 style="color: #00ccff;">Simple Dice Roller (D6)</h2>
+    <input type="number" id="diceCount" placeholder="Number of Dice (e.g. 5)" min="1" max="100" />
+    <input type="number" id="diceMod" placeholder="Modifier (optional)" />
+
+    <br />
+    <button onclick="rollSimpleDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ff99; color: #000;">Roll Dice</button>
+
+    <div id="simpleDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
-      authDomain: "fgg-table-booking.firebaseapp.com",
-      databaseURL: "https://fgg-table-booking-default-rtdb.firebaseio.com",
-      projectId: "fgg-table-booking",
-      storageBucket: "fgg-table-booking.firebasestorage.app",
-      messagingSenderId: "734963630039",
-      appId: "1:734963630039:web:836fd3f994377ffd719592",
-      measurementId: "G-PQ2V6KG6BE"
-    };
+    function rollSimpleDice() {
+      const numDice = parseInt(document.getElementById("diceCount").value);
+      const mod = parseInt(document.getElementById("diceMod").value) || 0;
+      const resultDiv = document.getElementById("simpleDiceResults");
+      resultDiv.innerHTML = "";
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const tunnelsTables = 6;
-    const crownTables = 3;
-
-    let currentDate = getTodayDate();
-    let allBookings = {};
-
-    const bookingDateInput = document.getElementById("bookingDate");
-    bookingDateInput.value = currentDate;
-    bookingDateInput.addEventListener("change", e => {
-      currentDate = e.target.value;
-      listenForBookings();
-    });
-
-    function getTodayDate() {
-      const today = new Date();
-      return today.toISOString().split("T")[0];
-    }
-
-    function getDayName(dateStr) {
-      return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "long" });
-    }
-
-    function toggleBooking(area, tableIndex) {
-      const nameInput = document.getElementById("playerName");
-      const name = nameInput.value.trim();
-      const tableKey = `${area}_table${tableIndex}`;
-      const tableRef = db.ref(`bookings/${currentDate}/${tableKey}`);
-      const isBooked = allBookings[tableKey];
-
-      if (isBooked) {
-        tableRef.remove();
-      } else {
-        if (!name) {
-          alert("Please enter your name to book a table.");
-          return;
-        }
-        tableRef.set(name);
-      }
-    }
-
-    function listenForBookings() {
-      db.ref(`bookings/${currentDate}`).on("value", snapshot => {
-        allBookings = snapshot.val() || {};
-        renderTables();
-      });
-    }
-
-    function renderTables() {
-      const container = document.getElementById("tablesContainer");
-      container.innerHTML = "";
-
-      const day = getDayName(currentDate);
-
-      if (day === "Tuesday") {
-        renderSection("The Tunnels", tunnelsTables, "tunnels", container);
+      if (isNaN(numDice) || numDice <= 0 || numDice > 100) {
+        resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–100).</p>";
+        return;
       }
 
-      if (day === "Monday") {
-        renderSection("The Crown", crownTables, "crown", container);
+      const rolls = [];
+      let total = 0;
+      let sixes = 0;
+
+      for (let i = 0; i < numDice; i++) {
+        const roll = Math.floor(Math.random() * 6) + 1;
+        if (roll === 6) sixes++;
+        const modified = roll + mod;
+        total += modified;
+        rolls.push(mod ? `${roll}(+${mod})→${modified}` : roll);
       }
 
-      if (day !== "Monday" && day !== "Tuesday") {
-        container.innerHTML = `<p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>`;
-      }
+      resultDiv.innerHTML = `
+        <p><strong>🎲 Dice Rolls:</strong> ${rolls.join(", ")}</p>
+        <p><strong>Total (with modifiers):</strong> ${total}</p>
+        <p><strong>Number of 6s rolled:</strong> ${sixes}</p>
+      `;
     }
-
-    function renderSection(title, count, area, container) {
-      const section = document.createElement("div");
-      section.className = "section-wrapper";
-      section.innerHTML = `<h2 class="section-title">${title}</h2>`;
-      const tableRow = document.createElement("div");
-      tableRow.className = "tables";
-
-      for (let i = 0; i < count; i++) {
-        const tableKey = `${area}_table${i}`;
-        const isBooked = allBookings[tableKey];
-        const name = isBooked || "";
-
-        const div = document.createElement("div");
-        div.className = "table";
-        const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-        const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-        div.innerHTML = `
-          <h3>Table ${i + 1}</h3>
-          <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-          ${name ? `<div class="booked-by">Booked by: ${name}</div>` : ""}
-          <button class="${buttonClass}" onclick="toggleBooking('${area}', ${i})">${buttonLabel}</button>
-        `;
-        tableRow.appendChild(div);
-      }
-
-      section.appendChild(tableRow);
-      container.appendChild(section);
-    }
-
-    async function exportBookingsToExcel() {
-      const range = document.getElementById("exportRange").value;
-      const baseDate = new Date(document.getElementById("bookingDate").value);
-      const dateList = [];
-
-      for (let i = 0; i < (range === 'week' ? 7 : range === 'month' ? 31 : range === 'year' ? 366 : 1); i++) {
-        const d = new Date(baseDate);
-        d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        dateList.push(dateStr);
-      }
-
-      const bookingsSnapshot = await Promise.all(
-        dateList.map(date => db.ref(`bookings/${date}`).get().then(snap => ({ date, data: snap.val() || {} })))
-      );
-
-      const rows = [["Date", "Area", "Table", "Booked By"]];
-      bookingsSnapshot.forEach(({ date, data }) => {
-        Object.entries(data).forEach(([key, value]) => {
-          const [area, table] = key.split("_table");
-          rows.push([date, area, `Table ${parseInt(table) + 1}`, value]);
-        });
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Bookings");
-      XLSX.writeFile(wb, `bookings_${range}_${getTodayDate()}.xlsx`);
-    }
-
-    listenForBookings();
   </script>
 
-<!-- 🎯 Warhammer 40K Dice & Attack Resolver -->
-  <div style="margin-top: 60px;">
-    <h2 style="color: #00ccff;">Warhammer 40K Attack Resolver</h2>
-
-    <label class="inline"><input type="checkbox" id="advancedMode" onchange="toggleAdvanced()" style="margin-right: 5px;" />Advanced Mode</label>
-
-    <!-- Basic (Hit‑only) Fields -->
-    <div id="basicFields" style="margin-top: 10px;">
-      <input type="number" id="numDice" placeholder="Number of Attacks" min="1" />
-      <input type="number" id="modifier" placeholder="Hit Modifier (+/-)" />
-      <input type="number" id="target" placeholder="BS (e.g. 3+)" min="2" max="6" />
-      <input type="number" id="sustained" placeholder="Sustained Hits (on 6s)" min="0" />
-
-      <br />
-      <label class="inline"><input type="checkbox" id="rerollOnes" style="margin-right: 5px;" />Reroll 1s</label>
-      <label class="inline" style="margin-left: 15px;"><input type="checkbox" id="lethalHits" style="margin-right: 5px;" />Lethal Hits</label>
-      <label class="inline" style="margin-left: 15px;"><input type="checkbox" id="devWounds" style="margin-right: 5px;" />Devastating Wounds</label>
-    </div>
-
-    <!-- Advanced Fields (hidden by default) -->
-    <div id="advancedFields" style="display: none; margin-top: 20px;">
-      <hr style="border: 1px solid #00ccff; margin: 15px auto; width: 80%;" />
-      <input type="number" id="strength" placeholder="Strength (S)" min="1" />
-      <input type="number" id="toughness" placeholder="Target Toughness (T)" min="1" />
-      <input type="number" id="woundMod" placeholder="Damage (D)" />
-
-      <br />
-      <label class="inline"><select id="woundReroll" style="width: 180px;">
-        <option value="none">Wound Reroll: None</option>
-        <option value="ones">Wound Reroll: 1s</option>
-        <option value="fails">Wound Reroll: All Fails</option>
-      </select></label>
-      <label class="inline" style="margin-left: 15px;"><select id="hitReroll" style="width: 180px;">
-        <option value="none">Hit Reroll: None</option>
-        <option value="ones">Hit Reroll: 1s</option>
-        <option value="fails">Hit Reroll: All Fails</option>
-      </select></label>
-
-      <br />
-      <input type="number" id="save" placeholder="Armor Save (e.g. 3)" min="2" max="7" />
-      <input type="number" id="ap" placeholder="AP (e.g. -2)" />
-      <input type="number" id="invul" placeholder="Invul Save (optional)" min="2" max="6" />
-      <input type="number" id="damage" placeholder="Damage per Hit" min="1" />
-      <input type="number" id="fnp" placeholder="Feel No Pain (e.g. 6)" min="2" max="6" />
-    </div>
-
-    <br />
-    <button onclick="rollDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Resolve</button>
-
-    <div id="whDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
-  </div>
-
-<script>
-  /* ----------------------------- UI Helpers ----------------------------- */
-  function toggleAdvanced() {
-    const adv = document.getElementById("advancedMode").checked;
-    document.getElementById("advancedFields").style.display = adv ? "block" : "none";
-  }
-
-  function rollDice() {
-    if (document.getElementById("advancedMode").checked) {
-      resolveAttack();
-    } else {
-      rollBasicDice();
-    }
-  }
-
-  /* ------------------------------ Basic Hit ----------------------------- */
-  function rollBasicDice() {
-    const numDice = parseInt(document.getElementById("numDice").value);
-    const modifier = parseInt(document.getElementById("modifier").value) || 0;
-    const target = parseInt(document.getElementById("target").value);
-    const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
-    const rerollOnes = document.getElementById("rerollOnes").checked;
-    const lethalHits = document.getElementById("lethalHits").checked;
-    const devWounds = document.getElementById("devWounds").checked;
-
-    const resultDiv = document.getElementById("whDiceResults");
-    resultDiv.innerHTML = "";
-
-    if (isNaN(numDice) || numDice <= 0 || numDice > 500) {
-      resultDiv.innerHTML = "<p>Please enter a valid number of attacks (1–500).</p>";
-      return;
-    }
-
-    if (isNaN(target) || target < 2 || target > 6) {
-      resultDiv.innerHTML = "<p>Please enter a valid hit skill (2–6).</p>";
-      return;
-    }
-
-    let rolls = [];
-    let hits = 0;
-    let extraHits = 0;
-    let lethalWounds = 0;
-    let mortalWounds = 0;
-    let rerolled = 0;
-
-    for (let i = 0; i < numDice; i++) {
-      let raw = Math.floor(Math.random() * 6) + 1;
-
-      // Reroll 1s
-      if (rerollOnes && raw === 1) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled++;
-      }
-
-      const modified = raw + modifier;
-
-      // Lethal Hits
-      if (raw === 6 && lethalHits) {
-        lethalWounds++;
-        if (devWounds) mortalWounds++;
-        continue; // skip hit check
-      }
-
-      if (modified >= target) {
-        hits++;
-      }
-
-      if (raw === 6 && sustainedHits > 0) {
-        extraHits += sustainedHits;
-      }
-
-      rolls.push({ raw, modified });
-    }
-
-    const totalHits = hits + extraHits;
-    const totalWounds = lethalWounds + totalHits;
-
-    resultDiv.innerHTML = `
-      <p><strong>\u{1F52B} Basic Hit Rolls</strong></p>
-      <p><strong>Rolls:</strong> ${rolls.map(r => r.raw + (modifier ? `(+${modifier}) → ${r.modified}` : "")).join(", ")}</p>
-      ${rerolled > 0 ? `<p><strong>Rerolled 1s:</strong> ${rerolled}</p>` : ""}
-      <p><strong>Normal Hits:</strong> ${hits}</p>
-      <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
-      <p><strong>Lethal Hits (auto-wounds):</strong> ${lethalWounds}</p>
-      ${mortalWounds > 0 ? `<p><strong>Devastating Wounds (mortal wounds):</strong> ${mortalWounds}</p>` : ""}
-      <p><strong>Total Hits/Wounds:</strong> ${totalWounds}</p>
-    `;
-  }
-
-  /* -------------------------- Advanced Resolver ------------------------- */
-  function getWoundTarget(S, T) {
-    if (S >= T * 2) return 2;
-    if (S > T) return 3;
-    if (S === T) return 4;
-    if (S * 2 <= T) return 6;
-    return 5;
-  }
-
-  function resolveAttack() {
-    const numAttacks = parseInt(document.getElementById("numDice").value);
-    const hitMod = parseInt(document.getElementById("modifier").value) || 0;
-    const hitSkill = parseInt(document.getElementById("target").value);
-    const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
-
-    const hitReroll = document.getElementById("hitReroll").value;
-    const lethalHits = document.getElementById("lethalHits").checked;
-    const devWounds = document.getElementById("devWounds").checked;
-
-    const S = parseInt(document.getElementById("strength").value);
-    const T = parseInt(document.getElementById("toughness").value);
-    const woundMod = parseInt(document.getElementById("woundMod").value) || 0;
-    const woundReroll = document.getElementById("woundReroll").value;
-
-    const save = parseInt(document.getElementById("save").value);
-    const ap = parseInt(document.getElementById("ap").value) || 0;
-    const invul = parseInt(document.getElementById("invul").value);
-    const damage = parseInt(document.getElementById("damage").value) || 1;
-    const fnp = parseInt(document.getElementById("fnp").value);
-
-    const resultDiv = document.getElementById("whDiceResults");
-    resultDiv.innerHTML = "";
-
-    // Basic validation
-    if (isNaN(numAttacks) || numAttacks <= 0 || numAttacks > 500) {
-      resultDiv.innerHTML = "<p>Please enter 1–500 attacks.</p>";
-      return;
-    }
-    if (isNaN(hitSkill) || hitSkill < 2 || hitSkill > 6) {
-      resultDiv.innerHTML = "<p>Enter a valid hit skill (2–6).</p>";
-      return;
-    }
-    if ([S, T, save].some(x => isNaN(x))) {
-      resultDiv.innerHTML = "<p>Please fill in Strength, Toughness, and Save values.</p>";
-      return;
-    }
-
-    /* ------------------------- 1. HIT ROLL ------------------------- */
-    let hitRollDetails = [];
-    let successfulHits = 0;
-    let extraHits = 0;
-    let lethalCount = 0;
-    let mortalWounds = 0;
-
-    for (let i = 0; i < numAttacks; i++) {
-      let raw = Math.floor(Math.random() * 6) + 1;
-      let rerolled = false;
-
-      // Hit rerolls
-      if (hitReroll === "ones" && raw === 1) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled = true;
-      } else if (hitReroll === "fails" && raw + hitMod < hitSkill) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled = true;
-      }
-
-      const modified = raw + hitMod;
-
-      if (raw === 6 && lethalHits) {
-        lethalCount++;
-        if (devWounds) mortalWounds++;
-        // sustained hits still generate extras even if lethal
-        if (raw === 6 && sustainedHits > 0) extraHits += sustainedHits;
-      } else {
-        if (modified >= hitSkill) successfulHits++;
-        if (raw === 6 && sustainedHits > 0) extraHits += sustainedHits;
-      }
-
-      hitRollDetails.push(`${raw}${rerolled ? "(r)" : ""}${hitMod ? `+${hitMod}` : ""}`);
-    }
-
-    const totalHits = successfulHits + extraHits + lethalCount;
-
-    /* ----------------------- 2. WOUND ROLL ------------------------- */
-    let woundRollDetails = [];
-    let normalWounds = 0;
-
-    const baseWoundTarget = getWoundTarget(S, T);
-    const woundTarget = Math.max(2, Math.min(6, baseWoundTarget - woundMod));
-
-    for (let i = 0; i < successfulHits + extraHits; i++) { // lethal auto-wounds skip
-      let raw = Math.floor(Math.random() * 6) + 1;
-      let rerolled = false;
-
-      // Wound rerolls
-      if (woundReroll === "ones" && raw === 1) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled = true;
-      } else if (woundReroll === "fails" && raw < woundTarget) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled = true;
-      }
-
-      if (raw >= woundTarget) normalWounds++;
-      woundRollDetails.push(`${raw}${rerolled ? "(r)" : ""}`);
-    }
-
-    const totalWounds = normalWounds + lethalCount; // mortal wounds counted separately
-
-    /* ---------------------- 3. SAVING THROWS ------------------------ */
-    const effectiveSave = isNaN(invul) ? save - ap : Math.min(invul, save - ap);
-
-    let unsavedWounds = 0;
-    let saveRollDetails = [];
-
-    for (let i = 0; i < normalWounds; i++) {
-      const raw = Math.floor(Math.random() * 6) + 1;
-      if (raw < effectiveSave) unsavedWounds++;
-      saveRollDetails.push(raw);
-    }
-
-    /* --------------------- 4. DAMAGE / FNP -------------------------- */
-    const damageBeforeFNP = (unsavedWounds * damage) + mortalWounds; // mortal wounds = 1 each
-
-    let finalDamage = damageBeforeFNP;
-    let fnpSaved = 0;
-
-    if (!isNaN(fnp)) {
-      let dmgRemaining = 0;
-      for (let i = 0; i < damageBeforeFNP; i++) {
-        const raw = Math.floor(Math.random() * 6) + 1;
-        if (raw < fnp) dmgRemaining++; else fnpSaved++;
-      }
-      finalDamage = dmgRemaining;
-    }
-
-    /* ------------------------- OUTPUT ------------------------------ */
-    resultDiv.innerHTML = `
-      <p><strong>\u{1F5F3} Hit Rolls:</strong> ${hitRollDetails.join(", ")}</p>
-      <p><strong>Successful Hits:</strong> ${successfulHits}</p>
-      <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
-      <p><strong>Lethal Auto-Wounds:</strong> ${lethalCount}</p>
-      ${mortalWounds > 0 ? `<p><strong>Devastating Wounds (mortals):</strong> ${mortalWounds}</p>` : ""}
-      <hr style="border: 1px dashed #00ccff; width: 80%;" />
-      <p><strong>\u{1F52A} Wound Rolls (target ${woundTarget}+):</strong> ${woundRollDetails.join(", ")}</p>
-      <p><strong>Total Wounds (pre-save):</strong> ${totalWounds}</p>
-      <hr style="border: 1px dashed #00ccff; width: 80%;" />
-      <p><strong>\u{1F6E1} Saves (need ${effectiveSave}+):</strong> ${saveRollDetails.join(", ")}</p>
-      <p><strong>Unsaved Wounds:</strong> ${unsavedWounds}</p>
-      <hr style="border: 1px dashed #00ccff; width: 80%;" />
-      <p><strong>\u{1F4AA} Damage per Wound:</strong> ${damage}</p>
-      <p><strong>Total Damage before FNP:</strong> ${damageBeforeFNP}</p>
-      ${!isNaN(fnp) ? `<p><strong>FNP (${fnp}+):</strong> prevented ${fnpSaved} damage</p>` : ""}
-      <p><strong>\u{1F525} Final Damage:</strong> ${finalDamage}</p>
-    `;
-  }
-</script>
-  
 </body>
 </html>
