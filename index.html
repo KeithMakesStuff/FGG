@@ -6,6 +6,7 @@
   <title>Frome Geek Gaming 40K Tables</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -86,15 +87,23 @@
   </style>
 </head>
 <body>
-
   <h1>Frome Geek Gaming 40K Tables</h1>
   <input type="date" id="bookingDate" />
   <input type="text" id="playerName" placeholder="Enter your name" />
 
   <div id="tablesContainer"></div>
 
+  <div style="margin-top: 20px">
+    <select id="exportRange">
+      <option value="day">Download Day</option>
+      <option value="week">Download Week</option>
+      <option value="month">Download Month</option>
+      <option value="year">Download Year</option>
+    </select>
+    <button onclick="exportBookingsToExcel()">Download Excel</button>
+  </div>
+
   <script>
-    // ✅ Your Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
       authDomain: "fgg-table-booking.firebaseapp.com",
@@ -134,8 +143,8 @@
     function toggleBooking(area, tableIndex) {
       const nameInput = document.getElementById("playerName");
       const name = nameInput.value.trim();
-      const tableKey = ${area}_table${tableIndex};
-      const tableRef = db.ref(bookings/${currentDate}/${tableKey});
+      const tableKey = `${area}_table${tableIndex}`;
+      const tableRef = db.ref(`bookings/${currentDate}/${tableKey}`);
       const isBooked = allBookings[tableKey];
 
       if (isBooked) {
@@ -150,7 +159,7 @@
     }
 
     function listenForBookings() {
-      db.ref(bookings/${currentDate}).on("value", snapshot => {
+      db.ref(`bookings/${currentDate}`).on("value", snapshot => {
         allBookings = snapshot.val() || {};
         renderTables();
       });
@@ -162,170 +171,172 @@
 
       const day = getDayName(currentDate);
 
-      // Tunnels – Only on Tuesdays
       if (day === "Tuesday") {
-        const section = document.createElement("div");
-        section.className = "section-wrapper";
-        section.innerHTML = <h2 class="section-title">The Tunnels</h2>;
-        const tableRow = document.createElement("div");
-        tableRow.className = "tables";
-
-        for (let i = 0; i < tunnelsTables; i++) {
-          const tableKey = tunnels_table${i};
-          const isBooked = allBookings[tableKey];
-          const name = isBooked || "";
-
-          const div = document.createElement("div");
-          div.className = "table";
-          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-          const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-          div.innerHTML = 
-            <h3>Table ${i + 1}</h3>
-            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
-            <button class="${buttonClass}" onclick="toggleBooking('tunnels', ${i})">${buttonLabel}</button>
-          ;
-          tableRow.appendChild(div);
-        }
-
-        section.appendChild(tableRow);
-        container.appendChild(section);
+        renderSection("The Tunnels", tunnelsTables, "tunnels", container);
       }
 
-      // Crown – Only on Mondays
       if (day === "Monday") {
-        const section = document.createElement("div");
-        section.className = "section-wrapper";
-        section.innerHTML = <h2 class="section-title">The Crown</h2>;
-        const tableRow = document.createElement("div");
-        tableRow.className = "tables";
-
-        for (let i = 0; i < crownTables; i++) {
-          const tableKey = crown_table${i};
-          const isBooked = allBookings[tableKey];
-          const name = isBooked || "";
-
-          const div = document.createElement("div");
-          div.className = "table";
-          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-          const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-          div.innerHTML = 
-            <h3>Table ${i + 1}</h3>
-            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
-            <button class="${buttonClass}" onclick="toggleBooking('crown', ${i})">${buttonLabel}</button>
-          ;
-          tableRow.appendChild(div);
-        }
-
-        section.appendChild(tableRow);
-        container.appendChild(section);
+        renderSection("The Crown", crownTables, "crown", container);
       }
 
       if (day !== "Monday" && day !== "Tuesday") {
-        container.innerHTML = <p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>;
+        container.innerHTML = `<p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>`;
       }
     }
 
-    // Initial load
+    function renderSection(title, count, area, container) {
+      const section = document.createElement("div");
+      section.className = "section-wrapper";
+      section.innerHTML = `<h2 class="section-title">${title}</h2>`;
+      const tableRow = document.createElement("div");
+      tableRow.className = "tables";
+
+      for (let i = 0; i < count; i++) {
+        const tableKey = `${area}_table${i}`;
+        const isBooked = allBookings[tableKey];
+        const name = isBooked || "";
+
+        const div = document.createElement("div");
+        div.className = "table";
+        const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+        const buttonLabel = isBooked ? "Unbook" : "Book Now";
+
+        div.innerHTML = `
+          <h3>Table ${i + 1}</h3>
+          <p>Status: ${isBooked ? "Booked" : "Available"}</p>
+          ${name ? `<div class="booked-by">Booked by: ${name}</div>` : ""}
+          <button class="${buttonClass}" onclick="toggleBooking('${area}', ${i})">${buttonLabel}</button>
+        `;
+        tableRow.appendChild(div);
+      }
+
+      section.appendChild(tableRow);
+      container.appendChild(section);
+    }
+
+    async function exportBookingsToExcel() {
+      const range = document.getElementById("exportRange").value;
+      const baseDate = new Date(document.getElementById("bookingDate").value);
+      const dateList = [];
+
+      for (let i = 0; i < (range === 'week' ? 7 : range === 'month' ? 31 : range === 'year' ? 366 : 1); i++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        dateList.push(dateStr);
+      }
+
+      const bookingsSnapshot = await Promise.all(
+        dateList.map(date => db.ref(`bookings/${date}`).get().then(snap => ({ date, data: snap.val() || {} })))
+      );
+
+      const rows = [["Date", "Area", "Table", "Booked By"]];
+      bookingsSnapshot.forEach(({ date, data }) => {
+        Object.entries(data).forEach(([key, value]) => {
+          const [area, table] = key.split("_table");
+          rows.push([date, area, `Table ${parseInt(table) + 1}`, value]);
+        });
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Bookings");
+      XLSX.writeFile(wb, `bookings_${range}_${getTodayDate()}.xlsx`);
+    }
+
     listenForBookings();
   </script>
 
-   <!-- 🎯 Warhammer 40K Advanced Dice Roller -->
-<div style="margin-top: 60px;">
-  <h2 style="color: #00ccff;">Warhammer 40K Advanced Dice Roller</h2>
+  <!-- Warhammer 40K Advanced Dice Roller -->
+  <div style="margin-top: 60px;">
+    <h2 style="color: #00ccff;">Warhammer 40K Advanced Dice Roller</h2>
 
-  <input type="number" id="numDice" placeholder="Number of Dice" min="1" style="margin: 5px; width: 160px;" />
-  <input type="number" id="modifier" placeholder="Modifier (+/-)" style="margin: 5px; width: 160px;" />
-  <input type="number" id="target" placeholder="Target Number (e.g. 3+)" min="2" max="6" style="margin: 5px; width: 160px;" />
-  <input type="number" id="sustained" placeholder="Sustained Hits (on 6s)" min="0" style="margin: 5px; width: 160px;" />
+    <input type="number" id="numDice" placeholder="Number of Dice" min="1" style="margin: 5px; width: 160px;" />
+    <input type="number" id="modifier" placeholder="Modifier (+/-)" style="margin: 5px; width: 160px;" />
+    <input type="number" id="target" placeholder="Target Number (e.g. 3+)" min="2" max="6" style="margin: 5px; width: 160px;" />
+    <input type="number" id="sustained" placeholder="Sustained Hits (on 6s)" min="0" style="margin: 5px; width: 160px;" />
 
-  <br />
-  <label><input type="checkbox" id="rerollOnes" style="margin-right: 5px;" />Reroll 1s</label>
-  <label><input type="checkbox" id="lethalHits" style="margin-left: 15px; margin-right: 5px;" />Lethal Hits</label>
-  <label><input type="checkbox" id="devWounds" style="margin-left: 15px; margin-right: 5px;" />Devastating Wounds</label>
+    <br />
+    <label><input type="checkbox" id="rerollOnes" style="margin-right: 5px;" />Reroll 1s</label>
+    <label><input type="checkbox" id="lethalHits" style="margin-left: 15px; margin-right: 5px;" />Lethal Hits</label>
+    <label><input type="checkbox" id="devWounds" style="margin-left: 15px; margin-right: 5px;" />Devastating Wounds</label>
 
-  <br />
-  <button onclick="rollAdvancedDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
+    <br />
+    <button onclick="rollAdvancedDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
 
-  <div id="whDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
-</div>
+    <div id="whDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
+  </div>
 
-<script>
-  function rollAdvancedDice() {
-    const numDice = parseInt(document.getElementById("numDice").value);
-    const modifier = parseInt(document.getElementById("modifier").value) || 0;
-    const target = parseInt(document.getElementById("target").value);
-    const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
-    const rerollOnes = document.getElementById("rerollOnes").checked;
-    const lethalHits = document.getElementById("lethalHits").checked;
-    const devWounds = document.getElementById("devWounds").checked;
+  <script>
+    function rollAdvancedDice() {
+      const numDice = parseInt(document.getElementById("numDice").value);
+      const modifier = parseInt(document.getElementById("modifier").value) || 0;
+      const target = parseInt(document.getElementById("target").value);
+      const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
+      const rerollOnes = document.getElementById("rerollOnes").checked;
+      const lethalHits = document.getElementById("lethalHits").checked;
+      const devWounds = document.getElementById("devWounds").checked;
 
-    const resultDiv = document.getElementById("whDiceResults");
-    resultDiv.innerHTML = "";
+      const resultDiv = document.getElementById("whDiceResults");
+      resultDiv.innerHTML = "";
 
-    if (isNaN(numDice) || numDice <= 0 || numDice > 500) {
-      resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–500).</p>";
-      return;
+      if (isNaN(numDice) || numDice <= 0 || numDice > 500) {
+        resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–500).</p>";
+        return;
+      }
+
+      if (isNaN(target) || target < 2 || target > 6) {
+        resultDiv.innerHTML = "<p>Please enter a valid target number (2–6).</p>";
+        return;
+      }
+
+      let rolls = [];
+      let hits = 0;
+      let extraHits = 0;
+      let lethalWounds = 0;
+      let mortalWounds = 0;
+      let rerolled = 0;
+
+      for (let i = 0; i < numDice; i++) {
+        let raw = Math.floor(Math.random() * 6) + 1;
+
+        if (rerollOnes && raw === 1) {
+          raw = Math.floor(Math.random() * 6) + 1;
+          rerolled++;
+        }
+
+        const modified = raw + modifier;
+
+        if (raw === 6 && lethalHits) {
+          lethalWounds++;
+          if (devWounds) mortalWounds++;
+          continue;
+        }
+
+        if (modified >= target) {
+          hits++;
+        }
+
+        if (raw === 6 && sustainedHits > 0) {
+          extraHits += sustainedHits;
+        }
+
+        rolls.push({ raw, modified });
+      }
+
+      const totalHits = hits + extraHits;
+      const totalWounds = lethalWounds + totalHits;
+
+      resultDiv.innerHTML = `
+        <p><strong>Rolls:</strong> ${rolls.map(r => r.raw + (modifier ? `(+${modifier}) → ${r.modified}` : '')).join(", ")}</p>
+        ${rerolled > 0 ? `<p><strong>Rerolled 1s:</strong> ${rerolled}</p>` : ""}
+        <p><strong>Normal Hits:</strong> ${hits}</p>
+        <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
+        <p><strong>Lethal Hits (auto-wounds):</strong> ${lethalWounds}</p>
+        ${mortalWounds > 0 ? `<p><strong>Devastating Wounds (mortal wounds):</strong> ${mortalWounds}</p>` : ""}
+        <p><strong>Total Hits/Wounds:</strong> ${totalWounds}</p>
+      `;
     }
-
-    if (isNaN(target) || target < 2 || target > 6) {
-      resultDiv.innerHTML = "<p>Please enter a valid target number (2–6).</p>";
-      return;
-    }
-
-    let rolls = [];
-    let hits = 0;
-    let extraHits = 0;
-    let lethalWounds = 0;
-    let mortalWounds = 0;
-    let rerolled = 0;
-
-    for (let i = 0; i < numDice; i++) {
-      let raw = Math.floor(Math.random() * 6) + 1;
-
-      // Reroll 1s
-      if (rerollOnes && raw === 1) {
-        raw = Math.floor(Math.random() * 6) + 1;
-        rerolled++;
-      }
-
-      const modified = raw + modifier;
-
-      // Lethal Hits
-      if (raw === 6 && lethalHits) {
-        lethalWounds++;
-        if (devWounds) mortalWounds++;
-        continue; // skip hit check
-      }
-
-      if (modified >= target) {
-        hits++;
-      }
-
-      if (raw === 6 && sustainedHits > 0) {
-        extraHits += sustainedHits;
-      }
-
-      rolls.push({ raw, modified });
-    }
-
-    const totalHits = hits + extraHits;
-    const totalWounds = lethalWounds + totalHits;
-
-    resultDiv.innerHTML = 
-      <p><strong>Rolls:</strong> ${rolls.map(r => r.raw + (modifier ? (+${modifier}) → ${r.modified} : '')).join(", ")}</p>
-      ${rerolled > 0 ? <p><strong>Rerolled 1s:</strong> ${rerolled}</p> : ""}
-      <p><strong>Normal Hits:</strong> ${hits}</p>
-      <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
-      <p><strong>Lethal Hits (auto-wounds):</strong> ${lethalWounds}</p>
-      ${mortalWounds > 0 ? <p><strong>Devastating Wounds (mortal wounds):</strong> ${mortalWounds}</p> : ""}
-      <p><strong>Total Hits/Wounds:</strong> ${totalWounds}</p>
-    ;
-  }
-</script>
-  
+  </script>
 </body>
 </html>
