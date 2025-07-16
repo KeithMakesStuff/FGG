@@ -233,41 +233,99 @@
     listenForBookings();
   </script>
 
-   <!-- 🎲 DICE ROLLER SECTION -->
-  <div style="margin-top: 60px;">
-    <h2 style="color: #00ccff;">D6 Dice Roller</h2>
-    <input type="number" id="numDice" placeholder="Number of Dice" min="1" max="100" style="margin: 5px; width: 160px;" />
-    <input type="number" id="modifier" placeholder="Modifier (e.g. +1)" style="margin: 5px; width: 160px;" />
-    <button onclick="rollDice()" style="margin: 10px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
-    
-    <div id="diceResults" style="margin-top: 20px; font-size: 16px;"></div>
-  </div>
+   <!-- 🎯 Warhammer 40K Advanced Dice Roller -->
+<div style="margin-top: 60px;">
+  <h2 style="color: #00ccff;">Warhammer 40K Advanced Dice Roller</h2>
 
-  <script>
-    function rollDice() {
-      const numDice = parseInt(document.getElementById("numDice").value);
-      const modifier = parseInt(document.getElementById("modifier").value) || 0;
-      const resultDiv = document.getElementById("diceResults");
+  <input type="number" id="numDice" placeholder="Number of Dice" min="1" style="margin: 5px; width: 160px;" />
+  <input type="number" id="modifier" placeholder="Modifier (+/-)" style="margin: 5px; width: 160px;" />
+  <input type="number" id="target" placeholder="Target Number (e.g. 3+)" min="2" max="6" style="margin: 5px; width: 160px;" />
+  <input type="number" id="sustained" placeholder="Sustained Hits (on 6s)" min="0" style="margin: 5px; width: 160px;" />
 
-      if (isNaN(numDice) || numDice <= 0) {
-        resultDiv.innerHTML = "<p>Please enter a valid number of dice.</p>";
-        return;
-      }
+  <br />
+  <label><input type="checkbox" id="rerollOnes" style="margin-right: 5px;" />Reroll 1s</label>
+  <label><input type="checkbox" id="lethalHits" style="margin-left: 15px; margin-right: 5px;" />Lethal Hits</label>
+  <label><input type="checkbox" id="devWounds" style="margin-left: 15px; margin-right: 5px;" />Devastating Wounds</label>
 
-      const rolls = [];
-      for (let i = 0; i < numDice; i++) {
-        const roll = Math.floor(Math.random() * 6) + 1;
-        rolls.push(roll + modifier);
-      }
+  <br />
+  <button onclick="rollAdvancedDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
 
-      const total = rolls.reduce((sum, val) => sum + val, 0);
+  <div id="whDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
+</div>
 
-      resultDiv.innerHTML = `
-        <p><strong>Rolls:</strong> ${rolls.join(", ")}</p>
-        <p><strong>Total:</strong> ${total}</p>
-      `;
+<script>
+  function rollAdvancedDice() {
+    const numDice = parseInt(document.getElementById("numDice").value);
+    const modifier = parseInt(document.getElementById("modifier").value) || 0;
+    const target = parseInt(document.getElementById("target").value);
+    const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
+    const rerollOnes = document.getElementById("rerollOnes").checked;
+    const lethalHits = document.getElementById("lethalHits").checked;
+    const devWounds = document.getElementById("devWounds").checked;
+
+    const resultDiv = document.getElementById("whDiceResults");
+    resultDiv.innerHTML = "";
+
+    if (isNaN(numDice) || numDice <= 0 || numDice > 500) {
+      resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–500).</p>";
+      return;
     }
-  </script>
+
+    if (isNaN(target) || target < 2 || target > 6) {
+      resultDiv.innerHTML = "<p>Please enter a valid target number (2–6).</p>";
+      return;
+    }
+
+    let rolls = [];
+    let hits = 0;
+    let extraHits = 0;
+    let lethalWounds = 0;
+    let mortalWounds = 0;
+    let rerolled = 0;
+
+    for (let i = 0; i < numDice; i++) {
+      let raw = Math.floor(Math.random() * 6) + 1;
+
+      // Reroll 1s
+      if (rerollOnes && raw === 1) {
+        raw = Math.floor(Math.random() * 6) + 1;
+        rerolled++;
+      }
+
+      const modified = raw + modifier;
+
+      // Lethal Hits
+      if (raw === 6 && lethalHits) {
+        lethalWounds++;
+        if (devWounds) mortalWounds++;
+        continue; // skip hit check
+      }
+
+      if (modified >= target) {
+        hits++;
+      }
+
+      if (raw === 6 && sustainedHits > 0) {
+        extraHits += sustainedHits;
+      }
+
+      rolls.push({ raw, modified });
+    }
+
+    const totalHits = hits + extraHits;
+    const totalWounds = lethalWounds + totalHits;
+
+    resultDiv.innerHTML = `
+      <p><strong>Rolls:</strong> ${rolls.map(r => r.raw + (modifier ? `(+${modifier}) → ${r.modified}` : '')).join(", ")}</p>
+      ${rerolled > 0 ? `<p><strong>Rerolled 1s:</strong> ${rerolled}</p>` : ""}
+      <p><strong>Normal Hits:</strong> ${hits}</p>
+      <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
+      <p><strong>Lethal Hits (auto-wounds):</strong> ${lethalWounds}</p>
+      ${mortalWounds > 0 ? `<p><strong>Devastating Wounds (mortal wounds):</strong> ${mortalWounds}</p>` : ""}
+      <p><strong>Total Hits/Wounds:</strong> ${totalWounds}</p>
+    `;
+  }
+</script>
   
 </body>
 </html>
