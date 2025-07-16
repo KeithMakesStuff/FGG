@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Frome Geek Gaming 40K Tables</title>
+  <title>Frome Geek Gaming 40K Tables & Attack Resolver</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #1a1a1a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
       color: #f0f0f0;
       text-align: center;
       padding: 20px;
@@ -18,6 +18,7 @@
     h1 {
       color: #00ff99;
       margin-bottom: 10px;
+      font-size: 32px;
     }
 
     h2.section-title {
@@ -35,11 +36,12 @@
     }
 
     .table {
-      background-color: #333;
+      background-color: #1f1f1f;
       border: 2px solid #00ff99;
       padding: 20px;
-      width: 200px;
-      border-radius: 10px;
+      width: 220px;
+      border-radius: 12px;
+      box-shadow: 0 0 8px #00ff9966;
     }
 
     button {
@@ -48,6 +50,11 @@
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
+      transition: transform 0.2s ease, background-color 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
     }
 
     .book-btn {
@@ -60,18 +67,15 @@
       color: #fff;
     }
 
-    input[type="date"], input[type="text"] {
+    input[type="date"], input[type="text"], input[type="number"], select {
       padding: 10px;
       font-size: 16px;
-      margin-bottom: 15px;
+      margin: 8px;
       border-radius: 5px;
-      border: 1px solid #00ff99;
-      background-color: #1a1a1a;
+      border: 1px solid #00ccff;
+      background-color: #1e1e1e;
       color: #f0f0f0;
-      width: 200px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
+      width: 180px;
     }
 
     .booked-by {
@@ -82,6 +86,31 @@
 
     .section-wrapper {
       margin-top: 30px;
+    }
+
+    .inline {
+      display: inline-block;
+      margin: 5px;
+    }
+
+    #basicFields input,
+    #advancedFields input,
+    #advancedFields select {
+      margin: 6px;
+    }
+
+    #whDiceResults {
+      background-color: #1e1e1e;
+      padding: 15px;
+      margin: 20px auto;
+      border-radius: 10px;
+      max-width: 700px;
+      box-shadow: 0 0 10px #00ccff33;
+      text-align: left;
+    }
+
+    #whDiceResults p {
+      margin: 5px 0;
     }
   </style>
 </head>
@@ -94,143 +123,61 @@
   <div id="tablesContainer"></div>
 
   <script>
-    // ✅ Your Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
-      authDomain: "fgg-table-booking.firebaseapp.com",
-      databaseURL: "https://fgg-table-booking-default-rtdb.firebaseio.com",
-      projectId: "fgg-table-booking",
-      storageBucket: "fgg-table-booking.firebasestorage.app",
-      messagingSenderId: "734963630039",
-      appId: "1:734963630039:web:836fd3f994377ffd719592",
-      measurementId: "G-PQ2V6KG6BE"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const tunnelsTables = 6;
-    const crownTables = 3;
+    const tables = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"];
 
-    let currentDate = getTodayDate();
-    let allBookings = {};
+    const container = document.getElementById("tablesContainer");
 
-    const bookingDateInput = document.getElementById("bookingDate");
-    bookingDateInput.value = currentDate;
-    bookingDateInput.addEventListener("change", e => {
-      currentDate = e.target.value;
-      listenForBookings();
-    });
+    function renderTables(date) {
+      container.innerHTML = "";
+      tables.forEach((table) => {
+        const ref = db.ref(`bookings/${date}/${table}`);
+        ref.once("value", (snapshot) => {
+          const booking = snapshot.val();
+          const div = document.createElement("div");
+          div.className = "table";
+          div.innerHTML = `<h3>${table}</h3>`;
 
-    function getTodayDate() {
-      const today = new Date();
-      return today.toISOString().split("T")[0];
-    }
+          if (booking) {
+            div.innerHTML += `<p class='booked-by'>Booked by: ${booking}</p><button class='unbook-btn' onclick="unbook('${date}', '${table}')">Unbook</button>`;
+          } else {
+            div.innerHTML += `<button class='book-btn' onclick="book('${date}', '${table}')">Book Table</button>`;
+          }
 
-    function getDayName(dateStr) {
-      return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "long" });
-    }
-
-    function toggleBooking(area, tableIndex) {
-      const nameInput = document.getElementById("playerName");
-      const name = nameInput.value.trim();
-      const tableKey = ${area}_table${tableIndex};
-      const tableRef = db.ref(bookings/${currentDate}/${tableKey});
-      const isBooked = allBookings[tableKey];
-
-      if (isBooked) {
-        tableRef.remove();
-      } else {
-        if (!name) {
-          alert("Please enter your name to book a table.");
-          return;
-        }
-        tableRef.set(name);
-      }
-    }
-
-    function listenForBookings() {
-      db.ref(bookings/${currentDate}).on("value", snapshot => {
-        allBookings = snapshot.val() || {};
-        renderTables();
+          container.appendChild(div);
+        });
       });
     }
 
-    function renderTables() {
-      const container = document.getElementById("tablesContainer");
-      container.innerHTML = "";
-
-      const day = getDayName(currentDate);
-
-      // Tunnels – Only on Tuesdays
-      if (day === "Tuesday") {
-        const section = document.createElement("div");
-        section.className = "section-wrapper";
-        section.innerHTML = <h2 class="section-title">The Tunnels</h2>;
-        const tableRow = document.createElement("div");
-        tableRow.className = "tables";
-
-        for (let i = 0; i < tunnelsTables; i++) {
-          const tableKey = tunnels_table${i};
-          const isBooked = allBookings[tableKey];
-          const name = isBooked || "";
-
-          const div = document.createElement("div");
-          div.className = "table";
-          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-          const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-          div.innerHTML = 
-            <h3>Table ${i + 1}</h3>
-            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
-            <button class="${buttonClass}" onclick="toggleBooking('tunnels', ${i})">${buttonLabel}</button>
-          ;
-          tableRow.appendChild(div);
-        }
-
-        section.appendChild(tableRow);
-        container.appendChild(section);
+    function book(date, table) {
+      const name = document.getElementById("playerName").value.trim();
+      if (!name) {
+        alert("Please enter your name to book a table.");
+        return;
       }
-
-      // Crown – Only on Mondays
-      if (day === "Monday") {
-        const section = document.createElement("div");
-        section.className = "section-wrapper";
-        section.innerHTML = <h2 class="section-title">The Crown</h2>;
-        const tableRow = document.createElement("div");
-        tableRow.className = "tables";
-
-        for (let i = 0; i < crownTables; i++) {
-          const tableKey = crown_table${i};
-          const isBooked = allBookings[tableKey];
-          const name = isBooked || "";
-
-          const div = document.createElement("div");
-          div.className = "table";
-          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
-          const buttonLabel = isBooked ? "Unbook" : "Book Now";
-
-          div.innerHTML = 
-            <h3>Table ${i + 1}</h3>
-            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
-            <button class="${buttonClass}" onclick="toggleBooking('crown', ${i})">${buttonLabel}</button>
-          ;
-          tableRow.appendChild(div);
-        }
-
-        section.appendChild(tableRow);
-        container.appendChild(section);
-      }
-
-      if (day !== "Monday" && day !== "Tuesday") {
-        container.innerHTML = <p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>;
-      }
+      db.ref(`bookings/${date}/${table}`).set(name).then(() => renderTables(date));
     }
 
-    // Initial load
-    listenForBookings();
+    function unbook(date, table) {
+      db.ref(`bookings/${date}/${table}`).remove().then(() => renderTables(date));
+    }
+
+    document.getElementById("bookingDate").addEventListener("change", (e) => {
+      const selectedDate = e.target.value;
+      if (selectedDate) renderTables(selectedDate);
+    });
   </script>
 
 <!-- 🎯 Warhammer 40K Dice & Attack Resolver -->
@@ -531,7 +478,54 @@
       <p><strong>\u{1F525} Final Damage:</strong> ${finalDamage}</p>
     ;
   }
+  <!-- 🎲 Simple Dice Roller -->
+<div style="margin-top: 60px;">
+  <h2 style="color: #00ccff;">Simple Dice Roller (D6)</h2>
+  <input type="number" id="diceCount" placeholder="Number of Dice (e.g. 5)" min="1" max="100" />
+  <input type="number" id="diceMod" placeholder="Modifier (optional)" />
+
+  <br />
+  <button onclick="rollSimpleDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ff99; color: #000;">Roll Dice</button>
+
+  <div id="simpleDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
+</div>
+
+<script>
+  function rollSimpleDice() {
+    const numDice = parseInt(document.getElementById("diceCount").value);
+    const mod = parseInt(document.getElementById("diceMod").value) || 0;
+    const resultDiv = document.getElementById("simpleDiceResults");
+    resultDiv.innerHTML = "";
+
+    if (isNaN(numDice) || numDice <= 0 || numDice > 100) {
+      resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–100).</p>";
+      return;
+    }
+
+    const rolls = [];
+    let total = 0;
+    let sixes = 0;
+
+    for (let i = 0; i < numDice; i++) {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      if (roll === 6) sixes++;
+      const modified = roll + mod;
+      total += modified;
+      rolls.push(mod ? `${roll}(+${mod})→${modified}` : roll);
+    }
+
+    resultDiv.innerHTML = `
+      <p><strong>\u{1F3B2} Dice Rolls:</strong> ${rolls.join(", ")}</p>
+      <p><strong>Total (with modifiers):</strong> ${total}</p>
+      <p><strong>Number of 6s rolled:</strong> ${sixes}</p>
+    `;
+  }
 </script>
+
+</script>
+
+  
+
   
 </body>
 </html>
