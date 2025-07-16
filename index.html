@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Frome Geek Gaming 40K Tables & Attack Resolver</title>
+  <title>Frome Geek Gaming 40K Tables</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
+      font-family: Arial, sans-serif;
+      background-color: #1a1a1a;
       color: #f0f0f0;
       text-align: center;
       padding: 20px;
@@ -18,7 +18,6 @@
     h1 {
       color: #00ff99;
       margin-bottom: 10px;
-      font-size: 32px;
     }
 
     h2.section-title {
@@ -36,12 +35,11 @@
     }
 
     .table {
-      background-color: #1f1f1f;
+      background-color: #333;
       border: 2px solid #00ff99;
       padding: 20px;
-      width: 220px;
-      border-radius: 12px;
-      box-shadow: 0 0 8px #00ff9966;
+      width: 200px;
+      border-radius: 10px;
     }
 
     button {
@@ -50,11 +48,6 @@
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
-      transition: transform 0.2s ease, background-color 0.3s ease;
-    }
-
-    button:hover {
-      transform: scale(1.05);
     }
 
     .book-btn {
@@ -67,15 +60,18 @@
       color: #fff;
     }
 
-    input[type="date"], input[type="text"], input[type="number"], select {
+    input[type="date"], input[type="text"] {
       padding: 10px;
       font-size: 16px;
-      margin: 8px;
+      margin-bottom: 15px;
       border-radius: 5px;
-      border: 1px solid #00ccff;
-      background-color: #1e1e1e;
+      border: 1px solid #00ff99;
+      background-color: #1a1a1a;
       color: #f0f0f0;
-      width: 180px;
+      width: 200px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .booked-by {
@@ -86,31 +82,6 @@
 
     .section-wrapper {
       margin-top: 30px;
-    }
-
-    .inline {
-      display: inline-block;
-      margin: 5px;
-    }
-
-    #basicFields input,
-    #advancedFields input,
-    #advancedFields select {
-      margin: 6px;
-    }
-
-    #whDiceResults {
-      background-color: #1e1e1e;
-      padding: 15px;
-      margin: 20px auto;
-      border-radius: 10px;
-      max-width: 700px;
-      box-shadow: 0 0 10px #00ccff33;
-      text-align: left;
-    }
-
-    #whDiceResults p {
-      margin: 5px 0;
     }
   </style>
 </head>
@@ -123,62 +94,141 @@
   <div id="tablesContainer"></div>
 
   <script>
+    // ✅ Your Firebase configuration
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
+      authDomain: "fgg-table-booking.firebaseapp.com",
+      databaseURL: "https://fgg-table-booking-default-rtdb.firebaseio.com",
+      projectId: "fgg-table-booking",
+      storageBucket: "fgg-table-booking.firebasestorage.app",
+      messagingSenderId: "734963630039",
+      appId: "1:734963630039:web:836fd3f994377ffd719592",
+      measurementId: "G-PQ2V6KG6BE"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const tables = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"];
+    const tunnelsTables = 6;
+    const crownTables = 3;
 
-    const container = document.getElementById("tablesContainer");
+    let currentDate = getTodayDate();
+    let allBookings = {};
 
-    function renderTables(date) {
-      container.innerHTML = "";
-      tables.forEach((table) => {
-        const ref = db.ref(`bookings/${date}/${table}`);
-        ref.once("value", (snapshot) => {
-          const booking = snapshot.val();
-          const div = document.createElement("div");
-          div.className = "table";
-          div.innerHTML = `<h3>${table}</h3>`;
+    const bookingDateInput = document.getElementById("bookingDate");
+    bookingDateInput.value = currentDate;
+    bookingDateInput.addEventListener("change", e => {
+      currentDate = e.target.value;
+      listenForBookings();
+    });
 
-          if (booking) {
-            div.innerHTML += `<p class='booked-by'>Booked by: ${booking}</p><button class='unbook-btn' onclick="unbook('${date}', '${table}')">Unbook</button>`;
-          } else {
-            div.innerHTML += `<button class='book-btn' onclick="book('${date}', '${table}')">Book Table</button>`;
-          }
+    function getTodayDate() {
+      const today = new Date();
+      return today.toISOString().split("T")[0];
+    }
 
-          container.appendChild(div);
-        });
+    function getDayName(dateStr) {
+      return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "long" });
+    }
+
+    function toggleBooking(area, tableIndex) {
+      const nameInput = document.getElementById("playerName");
+      const name = nameInput.value.trim();
+      const tableKey = ${area}_table${tableIndex};
+      const tableRef = db.ref(bookings/${currentDate}/${tableKey});
+      const isBooked = allBookings[tableKey];
+
+      if (isBooked) {
+        tableRef.remove();
+      } else {
+        if (!name) {
+          alert("Please enter your name to book a table.");
+          return;
+        }
+        tableRef.set(name);
+      }
+    }
+
+    function listenForBookings() {
+      db.ref(bookings/${currentDate}).on("value", snapshot => {
+        allBookings = snapshot.val() || {};
+        renderTables();
       });
     }
 
-    function book(date, table) {
-      const name = document.getElementById("playerName").value.trim();
-      if (!name) {
-        alert("Please enter your name to book a table.");
-        return;
+    function renderTables() {
+      const container = document.getElementById("tablesContainer");
+      container.innerHTML = "";
+
+      const day = getDayName(currentDate);
+
+      // Tunnels – Only on Tuesdays
+      if (day === "Tuesday") {
+        const section = document.createElement("div");
+        section.className = "section-wrapper";
+        section.innerHTML = <h2 class="section-title">The Tunnels</h2>;
+        const tableRow = document.createElement("div");
+        tableRow.className = "tables";
+
+        for (let i = 0; i < tunnelsTables; i++) {
+          const tableKey = tunnels_table${i};
+          const isBooked = allBookings[tableKey];
+          const name = isBooked || "";
+
+          const div = document.createElement("div");
+          div.className = "table";
+          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+          const buttonLabel = isBooked ? "Unbook" : "Book Now";
+
+          div.innerHTML = 
+            <h3>Table ${i + 1}</h3>
+            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
+            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
+            <button class="${buttonClass}" onclick="toggleBooking('tunnels', ${i})">${buttonLabel}</button>
+          ;
+          tableRow.appendChild(div);
+        }
+
+        section.appendChild(tableRow);
+        container.appendChild(section);
       }
-      db.ref(`bookings/${date}/${table}`).set(name).then(() => renderTables(date));
+
+      // Crown – Only on Mondays
+      if (day === "Monday") {
+        const section = document.createElement("div");
+        section.className = "section-wrapper";
+        section.innerHTML = <h2 class="section-title">The Crown</h2>;
+        const tableRow = document.createElement("div");
+        tableRow.className = "tables";
+
+        for (let i = 0; i < crownTables; i++) {
+          const tableKey = crown_table${i};
+          const isBooked = allBookings[tableKey];
+          const name = isBooked || "";
+
+          const div = document.createElement("div");
+          div.className = "table";
+          const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+          const buttonLabel = isBooked ? "Unbook" : "Book Now";
+
+          div.innerHTML = 
+            <h3>Table ${i + 1}</h3>
+            <p>Status: ${isBooked ? "Booked" : "Available"}</p>
+            ${name ? <div class="booked-by">Booked by: ${name}</div> : ""}
+            <button class="${buttonClass}" onclick="toggleBooking('crown', ${i})">${buttonLabel}</button>
+          ;
+          tableRow.appendChild(div);
+        }
+
+        section.appendChild(tableRow);
+        container.appendChild(section);
+      }
+
+      if (day !== "Monday" && day !== "Tuesday") {
+        container.innerHTML = <p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>;
+      }
     }
 
-    function unbook(date, table) {
-      db.ref(`bookings/${date}/${table}`).remove().then(() => renderTables(date));
-    }
-
-    document.getElementById("bookingDate").addEventListener("change", (e) => {
-      const selectedDate = e.target.value;
-      if (selectedDate) renderTables(selectedDate);
-    });
+    // Initial load
+    listenForBookings();
   </script>
-
-</body>
-</html>
