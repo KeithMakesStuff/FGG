@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Warhammer 40K Table Booking</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,11 +14,9 @@
       text-align: center;
       padding: 20px;
     }
-
     h1 {
       color: #00ff99;
     }
-
     .tables {
       display: flex;
       flex-wrap: wrap;
@@ -24,7 +24,6 @@
       gap: 20px;
       margin-top: 30px;
     }
-
     .table {
       background-color: #333;
       border: 2px solid #00ff99;
@@ -32,20 +31,24 @@
       width: 200px;
       border-radius: 10px;
     }
-
     .table h2 {
       margin-top: 0;
     }
-
     button {
       padding: 10px 15px;
-      background-color: #00ff99;
-      color: #000;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      font-weight: bold;
     }
-
+    .book-btn {
+      background-color: #00ff99;
+      color: #000;
+    }
+    .unbook-btn {
+      background-color: #ff4d4d;
+      color: #fff;
+    }
     input[type="date"] {
       padding: 10px;
       font-size: 16px;
@@ -59,60 +62,56 @@
 </head>
 <body>
 
-  <h1>Frome Geek Gaming 40K Table Booking</h1>
+  <h1>Warhammer 40K Table Booking</h1>
   <p>Select a date to view and manage bookings:</p>
   <input type="date" id="bookingDate" />
 
   <div class="tables" id="tableContainer"></div>
 
   <script>
-    const tables = 6;
-    const STORAGE_KEY = "wh40k_bookings";
+    const firebaseConfig = {
+  apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
+  authDomain: "fgg-table-booking.firebaseapp.com",
+  databaseURL: "https://fgg-table-booking-default-rtdb.firebaseio.com",
+  projectId: "fgg-table-booking",
+  storageBucket: "fgg-table-booking.firebasestorage.app",
+  messagingSenderId: "734963630039",
+  appId: "1:734963630039:web:836fd3f994377ffd719592",
+  measurementId: "G-PQ2V6KG6BE"
+};
 
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const tables = 6;
     let currentDate = getTodayDate();
-    let bookings = loadBookings();
+    let currentBookings = [];
 
     document.getElementById("bookingDate").value = currentDate;
     document.getElementById("bookingDate").addEventListener("change", (e) => {
       currentDate = e.target.value;
-      renderTables();
+      listenForBookings();
     });
 
     function getTodayDate() {
       const today = new Date();
-      return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
-    }
-
-    function loadBookings() {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : {};
-    }
-
-    function saveBookings() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
-    }
-
-    function isTableBooked(date, tableIndex) {
-      return bookings[date]?.includes(tableIndex);
+      return today.toISOString().split("T")[0];
     }
 
     function toggleBooking(tableIndex) {
-      if (!bookings[currentDate]) {
-        bookings[currentDate] = [];
-      }
-
-      const isBooked = bookings[currentDate].includes(tableIndex);
-
-      if (isBooked) {
-        bookings[currentDate] = bookings[currentDate].filter(i => i !== tableIndex);
-        alert(`You have unbooked Table ${tableIndex + 1} for ${currentDate}`);
+      const dateRef = db.ref(`bookings/${currentDate}`);
+      if (currentBookings.includes(tableIndex)) {
+        dateRef.set(currentBookings.filter(i => i !== tableIndex));
       } else {
-        bookings[currentDate].push(tableIndex);
-        alert(`You have booked Table ${tableIndex + 1} for ${currentDate}`);
+        dateRef.set([...currentBookings, tableIndex]);
       }
+    }
 
-      saveBookings();
-      renderTables();
+    function listenForBookings() {
+      db.ref(`bookings/${currentDate}`).on("value", snapshot => {
+        currentBookings = snapshot.val() || [];
+        renderTables();
+      });
     }
 
     function renderTables() {
@@ -120,25 +119,28 @@
       container.innerHTML = "";
 
       for (let i = 0; i < tables; i++) {
-        const isBooked = isTableBooked(currentDate, i);
+        const isBooked = currentBookings.includes(i);
         const div = document.createElement("div");
         div.className = "table";
+
+        const buttonClass = isBooked ? "unbook-btn" : "book-btn";
+        const buttonLabel = isBooked ? "Unbook" : "Book Now";
 
         div.innerHTML = `
           <h2>Table ${i + 1}</h2>
           <p>Status: ${isBooked ? "Booked" : "Available"}</p>
-          <button onclick="toggleBooking(${i})">
-            ${isBooked ? "Unbook" : "Book Now"}
-          </button>
+          <button class="${buttonClass}" onclick="toggleBooking(${i})">${buttonLabel}</button>
         `;
 
         container.appendChild(div);
       }
     }
 
-    renderTables();
+    // Initial load
+    listenForBookings();
   </script>
 
 </body>
 </html>
+
 
