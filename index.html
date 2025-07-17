@@ -84,6 +84,67 @@
     .section-wrapper {
       margin-top: 30px;
     }
+
+    #calendarContainer {
+      margin-top: 50px;
+    }
+
+    #calendarHeader {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      max-width: 490px;
+      margin: 0 auto 10px auto;
+      font-weight: bold;
+      color: #00ccff;
+    }
+
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      max-width: 490px;
+      margin: 0 auto 20px auto;
+    }
+
+    .calendar-day {
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      position: relative;
+      text-align: center;
+      user-select: none;
+    }
+
+    .calendar-day .summary {
+      font-size: 10px;
+      margin-top: 5px;
+      color: #bbb;
+    }
+
+    .calendar-day.today {
+      border: 2px solid #00ff99;
+    }
+
+    .calendar-day.selected {
+      background-color: #00ff99;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .calendar-day.available {
+      border-color: #00ccff;
+      background-color: #1f2f2f;
+    }
+
+    .calendar-day.partial {
+      border-color: #ffaa00;
+      background-color: #332b00;
+    }
+
+    .calendar-day.full {
+      border-color: #ff4d4d;
+      background-color: #330000;
+    }
   </style>
 </head>
 <body>
@@ -101,6 +162,24 @@
       <option value="year">Download Year</option>
     </select>
     <button onclick="exportBookingsToExcel()">Download Excel</button>
+  </div>
+
+  <div id="calendarContainer">
+    <h2 class="section-title">Select a Date from the Calendar</h2>
+    <div style="margin-bottom: 10px;">
+      <button onclick="changeMonth(-1)">← Previous</button>
+      <span id="calendarMonthLabel" style="margin: 0 10px; font-weight: bold;"></span>
+      <button onclick="changeMonth(1)">Next →</button>
+    </div>
+    <div id="calendarHeader" class="calendar-header">
+      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div id="calendar"></div>
+    <div style="max-width: 420px; margin: 10px auto; font-size: 12px;">
+      <span style="color:#00ccff;">■</span> Available &nbsp;
+      <span style="color:#ffaa00;">■</span> Partial &nbsp;
+      <span style="color:#ff4d4d;">■</span> Full
+    </div>
   </div>
 
   <script>
@@ -123,12 +202,16 @@
 
     let currentDate = getTodayDate();
     let allBookings = {};
+    let calendarMonth = new Date().getMonth();
+    let calendarYear = new Date().getFullYear();
+    let calendarBookings = {};
 
     const bookingDateInput = document.getElementById("bookingDate");
     bookingDateInput.value = currentDate;
     bookingDateInput.addEventListener("change", e => {
       currentDate = e.target.value;
       listenForBookings();
+      highlightSelectedDay(currentDate);
     });
 
     function getTodayDate() {
@@ -244,7 +327,106 @@
       XLSX.writeFile(wb, `bookings_${range}_${getTodayDate()}.xlsx`);
     }
 
+    async function generateCalendar() {
+      const calendar = document.getElementById("calendar");
+      const label = document.getElementById("calendarMonthLabel");
+      calendar.innerHTML = "";
+
+      const firstDate = new Date(calendarYear, calendarMonth, 1);
+      const firstWeekday = (firstDate.getDay() + 6) % 7;
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+      const monthName = new Date(calendarYear, calendarMonth).toLocaleString("en-GB", {
+        month: "long",
+        year: "numeric"
+      });
+      label.textContent = monthName;
+
+      const monthDates = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(calendarYear, calendarMonth, d);
+        monthDates.push(date.toISOString().split("T")[0]);
+      }
+
+      const snapArray = await Promise.all(
+        monthDates.map(date =>
+          db.ref(`bookings/${date}`).get().then(snap => ({ date, data: snap.val() || {} }))
+        )
+      );
+
+      calendarBookings = {};
+      snapArray.forEach(({ date, data }) => {
+        calendarBookings[date] = data;
+      });
+
+      for (let i = 0; i < firstWeekday; i++) {
+        calendar.appendChild(document.createElement("div"));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(calendarYear, calendarMonth, day);
+        const dateStr = date.toISOString().split("T")[0];
+        const bookings = calendarBookings[dateStr] || {};
+        const bookedCount = Object.keys(bookings).length;
+        const dayName = date.toLocaleDateString("en-GB", { weekday: "long" });
+
+        let totalTables = 0;
+        if (dayName === "Monday") totalTables = crownTables;
+        else if (dayName === "Tuesday") totalTables = tunnelsTables;
+
+        const div = document.createElement("div");
+        div.className = "calendar-day";
+
+        if (totalTables === 0) div.classList.add("available");
+        else if (bookedCount === 0) div.classList.add("available");
+        else if (bookedCount >= totalTables) div.classList.add("full");
+        else div.classList.add("partial");
+
+        div.textContent = day;
+
+        const summary = document.createElement("div");
+        summary.className = "summary";
+        if (totalTables > 0) summary.textContent = `${bookedCount}/${totalTables}`;
+        else summary.textContent = "—";
+        div.appendChild(summary);
+
+        if (dateStr === getTodayDate()) div.classList.add("today");
+        if (dateStr === bookingDateInput.value) div.classList.add("selected");
+
+        div.addEventListener("click", () => {
+          bookingDateInput.value = dateStr;
+          currentDate = dateStr;
+          listenForBookings();
+          highlightSelectedDay(dateStr);
+        });
+
+        calendar.appendChild(div);
+      }
+    }
+
+    function highlightSelectedDay(dateStr) {
+      document.querySelectorAll(".calendar-day").forEach(el => {
+        el.classList.remove("selected");
+        if (parseInt(el.textContent) === parseInt(dateStr.split("-")[2])) {
+          el.classList.add("selected");
+        }
+      });
+    }
+
+    function changeMonth(offset) {
+      calendarMonth += offset;
+      if (calendarMonth > 11) {
+        calendarMonth = 0;
+        calendarYear++;
+      } else if (calendarMonth < 0) {
+        calendarMonth = 11;
+        calendarYear--;
+      }
+      generateCalendar();
+    }
+
     listenForBookings();
+    generateCalendar();
   </script>
 
   <!-- Warhammer 40K Advanced Dice Roller -->
