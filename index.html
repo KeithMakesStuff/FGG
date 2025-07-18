@@ -1,3 +1,4 @@
+<!-- HEAD unchanged, styles and Firebase config preserved -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -148,7 +149,7 @@
   </style>
 </head>
 <body>
-  <h1>Frome Geek Gaming 40K Tables</h1>
+   <h1>Frome Geek Gaming 40K Tables</h1>
   <input type="date" id="bookingDate" />
   <input type="text" id="playerName" placeholder="Enter your name" />
 
@@ -216,7 +217,9 @@
 
     function getTodayDate() {
       const today = new Date();
-      return today.toISOString().split("T")[0];
+      return today.getFullYear() + "-" +
+             String(today.getMonth() + 1).padStart(2, '0') + "-" +
+             String(today.getDate()).padStart(2, '0');
     }
 
     function getDayName(dateStr) {
@@ -305,7 +308,9 @@
       for (let i = 0; i < (range === 'week' ? 7 : range === 'month' ? 31 : range === 'year' ? 366 : 1); i++) {
         const d = new Date(baseDate);
         d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = d.getFullYear() + "-" +
+                        String(d.getMonth() + 1).padStart(2, '0') + "-" +
+                        String(d.getDate()).padStart(2, '0');
         dateList.push(dateStr);
       }
 
@@ -345,7 +350,10 @@
       const monthDates = [];
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(calendarYear, calendarMonth, d);
-        monthDates.push(date.toISOString().split("T")[0]);
+        const dateStr = date.getFullYear() + "-" +
+                        String(date.getMonth() + 1).padStart(2, '0') + "-" +
+                        String(date.getDate()).padStart(2, '0');
+        monthDates.push(dateStr);
       }
 
       const snapArray = await Promise.all(
@@ -365,17 +373,28 @@
 
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(calendarYear, calendarMonth, day);
-        const dateStr = date.toISOString().split("T")[0];
+        const dateStr = date.getFullYear() + "-" +
+                        String(date.getMonth() + 1).padStart(2, '0') + "-" +
+                        String(date.getDate()).padStart(2, '0');
         const bookings = calendarBookings[dateStr] || {};
-        const bookedCount = Object.keys(bookings).length;
         const dayName = date.toLocaleDateString("en-GB", { weekday: "long" });
 
         let totalTables = 0;
-        if (dayName === "Monday") totalTables = crownTables;
-        else if (dayName === "Tuesday") totalTables = tunnelsTables;
+        let validKeys = [];
+
+        if (dayName === "Monday") {
+          totalTables = crownTables;
+          validKeys = Array.from({ length: crownTables }, (_, i) => `crown_table${i}`);
+        } else if (dayName === "Tuesday") {
+          totalTables = tunnelsTables;
+          validKeys = Array.from({ length: tunnelsTables }, (_, i) => `tunnels_table${i}`);
+        }
+
+        const bookedCount = validKeys.filter(key => bookings[key]).length;
 
         const div = document.createElement("div");
         div.className = "calendar-day";
+        div.dataset.date = dateStr;
 
         if (totalTables === 0) div.classList.add("available");
         else if (bookedCount === 0) div.classList.add("available");
@@ -386,8 +405,7 @@
 
         const summary = document.createElement("div");
         summary.className = "summary";
-        if (totalTables > 0) summary.textContent = `${bookedCount}/${totalTables}`;
-        else summary.textContent = "—";
+        summary.textContent = totalTables > 0 ? `${bookedCount}/${totalTables}` : "—";
         div.appendChild(summary);
 
         if (dateStr === getTodayDate()) div.classList.add("today");
@@ -407,7 +425,7 @@
     function highlightSelectedDay(dateStr) {
       document.querySelectorAll(".calendar-day").forEach(el => {
         el.classList.remove("selected");
-        if (parseInt(el.textContent) === parseInt(dateStr.split("-")[2])) {
+        if (el.dataset.date === dateStr) {
           el.classList.add("selected");
         }
       });
@@ -427,98 +445,6 @@
 
     listenForBookings();
     generateCalendar();
-  </script>
-
-  <!-- Warhammer 40K Advanced Dice Roller -->
-  <div style="margin-top: 60px;">
-    <h2 style="color: #00ccff;">Warhammer 40K Advanced Dice Roller</h2>
-
-    <input type="number" id="numDice" placeholder="Number of Dice" min="1" style="margin: 5px; width: 160px;" />
-    <input type="number" id="modifier" placeholder="Modifier (+/-)" style="margin: 5px; width: 160px;" />
-    <input type="number" id="target" placeholder="Target Number (e.g. 3+)" min="2" max="6" style="margin: 5px; width: 160px;" />
-    <input type="number" id="sustained" placeholder="Sustained Hits (on 6s)" min="0" style="margin: 5px; width: 160px;" />
-
-    <br />
-    <label><input type="checkbox" id="rerollOnes" style="margin-right: 5px;" />Reroll 1s</label>
-    <label><input type="checkbox" id="lethalHits" style="margin-left: 15px; margin-right: 5px;" />Lethal Hits</label>
-    <label><input type="checkbox" id="devWounds" style="margin-left: 15px; margin-right: 5px;" />Devastating Wounds</label>
-
-    <br />
-    <button onclick="rollAdvancedDice()" style="margin: 15px; padding: 10px 20px; font-weight: bold; border-radius: 5px; background-color: #00ccff; color: #000;">Roll</button>
-
-    <div id="whDiceResults" style="margin-top: 20px; font-size: 16px;"></div>
-  </div>
-
-  <script>
-    function rollAdvancedDice() {
-      const numDice = parseInt(document.getElementById("numDice").value);
-      const modifier = parseInt(document.getElementById("modifier").value) || 0;
-      const target = parseInt(document.getElementById("target").value);
-      const sustainedHits = parseInt(document.getElementById("sustained").value) || 0;
-      const rerollOnes = document.getElementById("rerollOnes").checked;
-      const lethalHits = document.getElementById("lethalHits").checked;
-      const devWounds = document.getElementById("devWounds").checked;
-
-      const resultDiv = document.getElementById("whDiceResults");
-      resultDiv.innerHTML = "";
-
-      if (isNaN(numDice) || numDice <= 0 || numDice > 500) {
-        resultDiv.innerHTML = "<p>Please enter a valid number of dice (1–500).</p>";
-        return;
-      }
-
-      if (isNaN(target) || target < 2 || target > 6) {
-        resultDiv.innerHTML = "<p>Please enter a valid target number (2–6).</p>";
-        return;
-      }
-
-      let rolls = [];
-      let hits = 0;
-      let extraHits = 0;
-      let lethalWounds = 0;
-      let mortalWounds = 0;
-      let rerolled = 0;
-
-      for (let i = 0; i < numDice; i++) {
-        let raw = Math.floor(Math.random() * 6) + 1;
-
-        if (rerollOnes && raw === 1) {
-          raw = Math.floor(Math.random() * 6) + 1;
-          rerolled++;
-        }
-
-        const modified = raw + modifier;
-
-        if (raw === 6 && lethalHits) {
-          lethalWounds++;
-          if (devWounds) mortalWounds++;
-          continue;
-        }
-
-        if (modified >= target) {
-          hits++;
-        }
-
-        if (raw === 6 && sustainedHits > 0) {
-          extraHits += sustainedHits;
-        }
-
-        rolls.push({ raw, modified });
-      }
-
-      const totalHits = hits + extraHits;
-      const totalWounds = lethalWounds + totalHits;
-
-      resultDiv.innerHTML = `
-        <p><strong>Rolls:</strong> ${rolls.map(r => r.raw + (modifier ? `(+${modifier}) → ${r.modified}` : '')).join(", ")}</p>
-        ${rerolled > 0 ? `<p><strong>Rerolled 1s:</strong> ${rerolled}</p>` : ""}
-        <p><strong>Normal Hits:</strong> ${hits}</p>
-        <p><strong>Sustained Hits (extra):</strong> ${extraHits}</p>
-        <p><strong>Lethal Hits (auto-wounds):</strong> ${lethalWounds}</p>
-        ${mortalWounds > 0 ? `<p><strong>Devastating Wounds (mortal wounds):</strong> ${mortalWounds}</p>` : ""}
-        <p><strong>Total Hits/Wounds:</strong> ${totalWounds}</p>
-      `;
-    }
   </script>
 </body>
 </html>
