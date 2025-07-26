@@ -238,6 +238,145 @@
     </div>
   </div>
 
+<div id="leagueModule">
+  <h2 class="section-title">FGG Escalation League</h2>
+  <button onclick="exportLeagueCSV()">Export League CSV</button>
+  <table id="leagueTable">
+    <thead>
+      <tr>
+        <th>Player Name</th>
+        <th>Faction(s)</th>
+        <th>Wins</th>
+        <th>Total VP</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div id="expandPanel" style="display:none; margin-top:20px;">
+    <h3 id="expandTitle"></h3>
+    <table id="detailTable" style="margin:0 auto; border-collapse:collapse;">
+      <thead><tr><th>Week</th><th>VP</th><th>Wins</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div id="adminPanel" style="margin-top:30px;">
+    <h3>Admin: Edit / Add Player</h3>
+    <input type="text" id="adminName" placeholder="Name">
+    <input type="text" id="adminFaction" placeholder="Faction">
+    <input type="number" id="adminWins" placeholder="Wins" min="0">
+    <input type="text" id="adminVP" placeholder="Comma‑separated VP per week">
+    <button onclick="savePlayer()">Save Player</button>
+  </div>
+</div>
+
+<script>
+  const leagueRef = db.ref('league');
+  let leagueData = {};
+
+  leagueRef.on('value', snap => {
+    leagueData = snap.val() || {};
+    renderLeague();
+  });
+
+  function calculateTotalVP(vps) {
+    return vps.reduce((a,b) => a + b, 0);
+  }
+
+  function sortLeague(a,b) {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    const totalA = calculateTotalVP(a.vps), totalB = calculateTotalVP(b.vps);
+    if (totalA !== totalB) return totalB - totalA;
+    // head-to-head not tracked yet
+    return 0;
+  }
+
+  function renderLeague() {
+    const tbody = document.querySelector('#leagueTable tbody');
+    tbody.innerHTML = '';
+    const list = Object.entries(leagueData).map(([id,p]) => ({id, ...p}));
+    list.sort(sortLeague).forEach(p => {
+      const tr = document.createElement('tr');
+      const totalVP = calculateTotalVP(p.vps);
+      tr.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.faction}</td>
+        <td>${p.wins}</td>
+        <td>${totalVP}</td>
+        <td><button onclick="expandPlayer('${p.id}')">View</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function expandPlayer(id) {
+    const player = leagueData[id];
+    if (!player) return;
+    document.getElementById('expandTitle').textContent = player.name + ' – Weekly Breakdown';
+    const tbody = document.querySelector('#detailTable tbody');
+    tbody.innerHTML = '';
+    player.vps.forEach((vp, i) => {
+      const w = i+1;
+      const wins = player.vps[i] >= 50 ? 1 : 0; // adjust logic
+      const row = `<tr><td>W${w}</td><td>${vp}</td><td>${wins}</td></tr>`;
+      tbody.insertAdjacentHTML('beforeend', row);
+    });
+    document.getElementById('expandPanel').style.display = 'block';
+  }
+
+  function exportLeagueCSV() {
+    const rows = [['Name','Faction','Wins','Total VP', ...Object.keys(leagueData)[0] ? Object.keys(leagueData).map((_,i) => 'W'+(i+1)) : []]];
+    Object.values(leagueData).sort(sortLeague).forEach(p => {
+      rows.push([p.name,p.faction,p.wins,calculateTotalVP(p.vps),...p.vps]);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='league.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function savePlayer() {
+    const name = document.getElementById('adminName').value.trim();
+    const faction = document.getElementById('adminFaction').value.trim();
+    const wins = parseInt(document.getElementById('adminWins').value) || 0;
+    const vp = document.getElementById('adminVP').value.split(',').map(n=>parseInt(n)||0);
+    if (!name || !faction) {alert('Name & faction required'); return;}
+    const id = name.replace(/\s+/g,'_').toLowerCase();
+    leagueRef.child(id).set({ name, faction, wins, vps: vp });
+  }
+</script>
+<style>
+  #leagueTable, #detailTable {
+    width:90%;
+    border-collapse: collapse;
+    margin:10px auto;
+  }
+  #leagueTable th, #leagueTable td,
+  #detailTable th, #detailTable td {
+    border:1px solid #00ff99;
+    padding:6px 10px;
+    font-family: "Montserrat", sans-serif;
+    color: #00ff99;
+  }
+  #leagueTable th { background:#003300; }
+  #leagueTable tr:nth-child(even) { background:#111; }
+  #expandPanel h3 { font-family: "Michroma", sans-serif; color:#00ff99; }
+  #adminPanel input {
+    margin:4px; padding:6px;
+    font-family: "Montserrat", sans-serif;
+    background:#1f2f2f; color:#f0f0f0;
+    border:1px solid #00ff99; border-radius:3px;
+  }
+  #adminPanel button {
+    font-family:"Michroma",sans-serif;
+    background:#00ff99;color:#000;
+  }
+</style>
+
+  
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
