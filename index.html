@@ -433,24 +433,29 @@
       const name = nameInput.value.trim();
       const tableKey = `${area}_table${tableIndex}`;
       const tableRef = db.ref(`bookings/${currentDate}/${tableKey}`);
-      const bookingData = allBookings[tableKey];
+      const booking = allBookings[tableKey];
 
-      if (bookingData) {
-        // Unbooking request
-      if (!name) {
-        alert("Please enter your name to unbook this table.");
-        return;
+      if (booking) {
+        // Unbooking
+        if (!name) {
+          alert("Please enter your name to unbook this table.");
+          return;
+        }
+        if (booking.name !== name) {
+          alert("You can only unbook a table you booked.");
+          return;
+        }
+        tableRef.remove();
+      } else {
+        // Booking
+        if (!name) {
+          alert("Please enter your name to book a table.");
+          return;
+        }
+        tableRef.set({ name: name });
+      }
     }
-    tableRef.set({ name: name, _delete: true });
-  } else {
-    // Booking request
-    if (!name) {
-      alert("Please enter your name to book a table.");
-      return;
-    }
-    tableRef.set({ name: name });
-  }
-}
+
 
 
     function listenForBookings() {
