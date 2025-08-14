@@ -434,9 +434,8 @@
       const tableKey = `${area}_table${tableIndex}`;
       const tableRef = db.ref(`bookings/${currentDate}/${tableKey}`);
       const booking = allBookings[tableKey];
-
+    
       if (booking) {
-        // Unbooking
         if (!name) {
           alert("Please enter your name to unbook this table.");
           return;
@@ -447,7 +446,6 @@
         }
         tableRef.remove();
       } else {
-        // Booking
         if (!name) {
           alert("Please enter your name to book a table.");
           return;
@@ -455,6 +453,7 @@
         tableRef.set({ name: name });
       }
     }
+
 
 
 
