@@ -433,18 +433,25 @@
       const name = nameInput.value.trim();
       const tableKey = `${area}_table${tableIndex}`;
       const tableRef = db.ref(`bookings/${currentDate}/${tableKey}`);
-      const isBooked = allBookings[tableKey];
+      const bookingData = allBookings[tableKey];
 
-      if (isBooked) {
-        tableRef.remove();
-      } else {
-        if (!name) {
-          alert("Please enter your name to book a table.");
-          return;
-        }
-        tableRef.set(name);
-      }
+      if (bookingData) {
+        // Unbooking request
+      if (!name) {
+        alert("Please enter your name to unbook this table.");
+        return;
     }
+    tableRef.set({ name: name, _delete: true });
+  } else {
+    // Booking request
+    if (!name) {
+      alert("Please enter your name to book a table.");
+      return;
+    }
+    tableRef.set({ name: name });
+  }
+}
+
 
     function listenForBookings() {
       db.ref(`bookings/${currentDate}`).on("value", snapshot => {
@@ -481,8 +488,10 @@
 
       for (let i = 0; i < count; i++) {
         const tableKey = `${area}_table${i}`;
-        const isBooked = allBookings[tableKey];
-        const name = isBooked || "";
+        const booking = allBookings[tableKey];
+        const isBooked = !!booking;
+        const name = booking && booking.name ? booking.name : "";
+
 
         const div = document.createElement("div");
         div.className = "table";
