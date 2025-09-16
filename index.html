@@ -402,7 +402,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const tunnelsTables = 6;
+    const tunnelsTables = 2;
     const crownTables = 3;
 
     let currentDate = getTodayDate();
@@ -473,7 +473,7 @@
       const day = getDayName(currentDate);
 
       if (day === "Tuesday") {
-        renderSection("The Tunnels", tunnelsTables, "tunnels", container);
+        renderSection("Cheese & Grain", tunnelsTables, "tunnels", container);
       }
 
       if (day === "Monday") {
