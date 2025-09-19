@@ -1,116 +1,76 @@
-
-<!-- HEAD unchanged, styles and Firebase config preserved -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Frome Geek Gaming 40K Tables</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
- 
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Zen+Dots&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
 
   <style>
-    .zen-dots-regular {
-      font-family: "Zen Dots", sans-serif;
-      font-weight: 400;
-      font-style: normal;
-    }
-
-    .michroma-regular {
-    font-family: "Michroma", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-    }
-
-    // <weight>: Use a value from 100 to 900
-    // <uniquifier>: Use a unique and descriptive class name
-
-    .inter-light {
-    font-family: "Inter", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 300;
-    font-style: normal;
-}
-
-    // <weight>: Use a value from 100 to 900
-    // <uniquifier>: Use a unique and descriptive class name
-
-    .montserrat-light {
-      font-family: "Montserrat", sans-serif;
-      font-optical-sizing: auto;
-      font-weight: 300;
-      font-style: normal;
-    }
-   
     body {
       background-image: url('https://images3.alphacoders.com/138/1383255.png');
       background-size: cover;
       background-position: center top;
       background-attachment: fixed;
       background-repeat: no-repeat;
-      background-color: ##040404; /* fallback if image doesn't load */
+      background-color: #040404;
       color: #f0f0f0;
       font-family: "Montserrat", sans-serif;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
-
 
     h1 {
       font-family: "Michroma", sans-serif;
       color: #00ff99;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
     }
 
     h2.section-title {
       font-family: "Michroma", sans-serif;
-      margin-top: 40px;
-      font-size: 24px;
+      margin-top: 30px;
+      font-size: 22px;
       color: #00ff99;
     }
-    
-    h3 {
-      font-family: "Michroma", sans-serif;
-      display: block;
-      font-size: 1.17em;
-      margin-block-start: 1em;
-      margin-block-end: 1em;
-      margin-inline-start: 0px;
-      margin-inline-end: 0px;
-      font-weight: bold;
-      unicode-bidi: isolate;
-}
+
     .tables {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 20px;
-      margin-top: 20px;
+      gap: 15px;
+      margin-top: 15px;
     }
 
     .table {
       background-color: #1f2f2f;
       border: 2px solid #1f2f2f;
-      padding: 20px;
+      padding: 15px;
       width: 200px;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.4);
     }
 
     button {
       padding: 10px 15px;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
       font-family: "Michroma", sans-serif;
+      transition: all 0.2s ease-in-out;
+    }
+
+    button:hover {
+      transform: scale(1.05);
     }
 
     .book-btn {
@@ -123,33 +83,36 @@
       color: #fff;
     }
 
-    input[type="date"], input[type="text"] {
+    .black-btn {
+      background-color: #000;
+      color: #fff;
+      border: 1px solid #333;
+    }
+
+    .black-btn:hover {
+      background-color: #111;
+    }
+
+    input[type="date"], input[type="text"], select {
       padding: 10px;
       font-size: 16px;
-      margin-bottom: 15px;
-      border-radius: 5px;
+      margin: 10px auto;
+      border-radius: 6px;
       border: 1px solid #00ff99;
       background-color: #1f2f2f;
       color: #f0f0f0;
-      width: 200px;
+      width: 220px;
       display: block;
-      margin-left: auto;
-      margin-right: auto;
     }
 
     .booked-by {
-      font-size: 0.9em;
+      font-size: 0.85em;
       color: #bbb;
       margin-top: 5px;
-      margin-bottom: 15px;
-    }
-
-    .section-wrapper {
-      margin-top: 30px;
     }
 
     #calendarContainer {
-      margin-top: 50px;
+      margin-bottom: 30px;
     }
 
     #calendarHeader {
@@ -173,47 +136,53 @@
 
     .calendar-day {
       padding: 10px;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
-      position: relative;
       text-align: center;
       user-select: none;
     }
 
     .calendar-day .summary {
       font-size: 10px;
-      margin-top: 5px;
+      margin-top: 4px;
       color: #bbb;
     }
 
-    .calendar-day.today {
-      border: 2px solid #00ff99;
-    }
+    .calendar-day.today { border: 2px solid #00ff99; }
+    .calendar-day.selected { background-color: #00ff99; color: #000; font-weight: bold; }
+    .calendar-day.available { background-color: #1f2f2f; border: 1px solid #00ccff; }
+    .calendar-day.partial { background-color: #332b00; border: 1px solid #ffaa00; }
+    .calendar-day.full { background-color: #330000; border: 1px solid #ff4d4d; }
 
-    .calendar-day.selected {
-      background-color: #00ff99;
-      color: #000;
-      font-weight: bold;
-    }
-
-    .calendar-day.available {
-      border-color: #00ccff;
-      background-color: #1f2f2f;
-    }
-
-    .calendar-day.partial {
-      border-color: #ffaa00;
-      background-color: #332b00;
-    }
-
-    .calendar-day.full {
-      border-color: #ff4d4d;
-      background-color: #330000;
+    /* Responsive */
+    @media (max-width: 600px) {
+      .tables { flex-direction: column; align-items: center; }
+      .table { width: 90%; }
+      #calendar, #calendarHeader { max-width: 100%; }
     }
   </style>
 </head>
 <body>
-   <h1 class="michroma-regular">FROME GEEK GAMING 40K TABLES</h1>
+  <h1>FROME GEEK GAMING 40K TABLES</h1>
+
+  <div id="calendarContainer">
+    <h2 class="section-title">Table availability</h2>
+    <div style="margin-bottom: 10px;">
+      <button class="black-btn" onclick="changeMonth(-1)">← Previous</button>
+      <span id="calendarMonthLabel" style="margin: 0 10px; font-weight: bold;"></span>
+      <button class="black-btn" onclick="changeMonth(1)">Next →</button>
+    </div>
+    <div id="calendarHeader">
+      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div id="calendar"></div>
+    <div style="max-width: 420px; margin: 10px auto; font-size: 12px;">
+      <span style="color:#00ccff;">■</span> Available &nbsp;
+      <span style="color:#ffaa00;">■</span> Partial &nbsp;
+      <span style="color:#ff4d4d;">■</span> Full
+    </div>
+  </div>
+
   <input type="date" id="bookingDate" />
   <input type="text" id="playerName" placeholder="Enter your name" />
 
@@ -226,167 +195,9 @@
       <option value="month">Download Month</option>
       <option value="year">Download Year</option>
     </select>
-    <button onclick="exportBookingsToExcel()">Download Excel</button>
+    <button class="black-btn" onclick="exportBookingsToExcel()">Download Excel</button>
   </div>
 
-  <div id="calendarContainer">
-    <h2 class="section-title">Table availability</h2>
-    <div style="margin-bottom: 10px;">
-      <button onclick="changeMonth(-1)">← Previous</button>
-      <span id="calendarMonthLabel" style="margin: 0 10px; font-weight: bold;"></span>
-      <button onclick="changeMonth(1)">Next →</button>
-    </div>
-    <div id="calendarHeader" class="calendar-header">
-      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-    </div>
-    <div id="calendar"></div>
-    <div style="max-width: 420px; margin: 10px auto; font-size: 12px;">
-      <span style="color:#00ccff;">■</span> Available &nbsp;
-      <span style="color:#ffaa00;">■</span> Partial &nbsp;
-      <span style="color:#ff4d4d;">■</span> Full
-    </div>
-  </div>
-
-<!--  
-<div id="leagueModule">
-  <h2 class="section-title">FGG Escalation League</h2>
-  <button onclick="exportLeagueCSV()">Export League CSV</button>
-  <table id="leagueTable">
-    <thead>
-      <tr>
-        <th>Player Name</th>
-        <th>Faction(s)</th>
-        <th>Wins</th>
-        <th>Total VP</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <div id="expandPanel" style="display:none; margin-top:20px;">
-    <h3 id="expandTitle"></h3>
-    <table id="detailTable" style="margin:0 auto; border-collapse:collapse;">
-      <thead><tr><th>Week</th><th>VP</th><th>Wins</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <div id="adminPanel" style="margin-top:30px;">
-    <h3>Admin: Edit / Add Player</h3>
-    <input type="text" id="adminName" placeholder="Name">
-    <input type="text" id="adminFaction" placeholder="Faction">
-    <input type="number" id="adminWins" placeholder="Wins" min="0">
-    <input type="text" id="adminVP" placeholder="Comma‑separated VP per week">
-    <button onclick="savePlayer()">Save Player</button>
-  </div>
-</div>
--->
-  
-<script>
-  const leagueRef = db.ref('league');
-  let leagueData = {};
-
-  leagueRef.on('value', snap => {
-    leagueData = snap.val() || {};
-    renderLeague();
-  });
-
-  function calculateTotalVP(vps) {
-    return vps.reduce((a,b) => a + b, 0);
-  }
-
-  function sortLeague(a,b) {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    const totalA = calculateTotalVP(a.vps), totalB = calculateTotalVP(b.vps);
-    if (totalA !== totalB) return totalB - totalA;
-    // head-to-head not tracked yet
-    return 0;
-  }
-
-  function renderLeague() {
-    const tbody = document.querySelector('#leagueTable tbody');
-    tbody.innerHTML = '';
-    const list = Object.entries(leagueData).map(([id,p]) => ({id, ...p}));
-    list.sort(sortLeague).forEach(p => {
-      const tr = document.createElement('tr');
-      const totalVP = calculateTotalVP(p.vps);
-      tr.innerHTML = `
-        <td>${p.name}</td>
-        <td>${p.faction}</td>
-        <td>${p.wins}</td>
-        <td>${totalVP}</td>
-        <td><button onclick="expandPlayer('${p.id}')">View</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function expandPlayer(id) {
-    const player = leagueData[id];
-    if (!player) return;
-    document.getElementById('expandTitle').textContent = player.name + ' – Weekly Breakdown';
-    const tbody = document.querySelector('#detailTable tbody');
-    tbody.innerHTML = '';
-    player.vps.forEach((vp, i) => {
-      const w = i+1;
-      const wins = player.vps[i] >= 50 ? 1 : 0; // adjust logic
-      const row = `<tr><td>W${w}</td><td>${vp}</td><td>${wins}</td></tr>`;
-      tbody.insertAdjacentHTML('beforeend', row);
-    });
-    document.getElementById('expandPanel').style.display = 'block';
-  }
-
-  function exportLeagueCSV() {
-    const rows = [['Name','Faction','Wins','Total VP', ...Object.keys(leagueData)[0] ? Object.keys(leagueData).map((_,i) => 'W'+(i+1)) : []]];
-    Object.values(leagueData).sort(sortLeague).forEach(p => {
-      rows.push([p.name,p.faction,p.wins,calculateTotalVP(p.vps),...p.vps]);
-    });
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download='league.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function savePlayer() {
-    const name = document.getElementById('adminName').value.trim();
-    const faction = document.getElementById('adminFaction').value.trim();
-    const wins = parseInt(document.getElementById('adminWins').value) || 0;
-    const vp = document.getElementById('adminVP').value.split(',').map(n=>parseInt(n)||0);
-    if (!name || !faction) {alert('Name & faction required'); return;}
-    const id = name.replace(/\s+/g,'_').toLowerCase();
-    leagueRef.child(id).set({ name, faction, wins, vps: vp });
-  }
-</script>
-<style>
-  #leagueTable, #detailTable {
-    width:90%;
-    border-collapse: collapse;
-    margin:10px auto;
-  }
-  #leagueTable th, #leagueTable td,
-  #detailTable th, #detailTable td {
-    border:1px solid #00ff99;
-    padding:6px 10px;
-    font-family: "Montserrat", sans-serif;
-    color: #00ff99;
-  }
-  #leagueTable th { background:#003300; }
-  #leagueTable tr:nth-child(even) { background:#111; }
-  #expandPanel h3 { font-family: "Michroma", sans-serif; color:#00ff99; }
-  #adminPanel input {
-    margin:4px; padding:6px;
-    font-family: "Montserrat", sans-serif;
-    background:#1f2f2f; color:#f0f0f0;
-    border:1px solid #00ff99; border-radius:3px;
-  }
-  #adminPanel button {
-    font-family:"Michroma",sans-serif;
-    background:#00ff99;color:#000;
-  }
-</style>
-  
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBFzGr19X4tIaBCU0SnISUzFSaZPQ5m1_k",
@@ -398,12 +209,11 @@
       appId: "1:734963630039:web:836fd3f994377ffd719592",
       measurementId: "G-PQ2V6KG6BE"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     const cheeseTables = 2;
-    const crownTables = 3;
+    const crownGuildTables = 3;
 
     let currentDate = getTodayDate();
     let allBookings = {};
@@ -421,13 +231,20 @@
 
     function getTodayDate() {
       const today = new Date();
-      return today.getFullYear() + "-" +
-             String(today.getMonth() + 1).padStart(2, '0') + "-" +
-             String(today.getDate()).padStart(2, '0');
+      return today.toISOString().split("T")[0];
     }
 
     function getDayName(dateStr) {
       return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "long" });
+    }
+
+    function getTuesdayOrder(dateStr) {
+      const d = new Date(dateStr);
+      if (d.getDay() !== 2) return null;
+      const dayNum = d.getDate();
+      if (dayNum >= 8 && dayNum <= 14) return 2;
+      if (dayNum >= 22 && dayNum <= 28) return 4;
+      return null;
     }
 
     function toggleBooking(area, tableIndex) {
@@ -438,26 +255,14 @@
       const booking = allBookings[tableKey];
     
       if (booking) {
-        if (!name) {
-          alert("Please enter your name to unbook this table.");
-          return;
-        }
-        if (booking.name !== name) {
-          alert("You can only unbook a table you booked.");
-          return;
-        }
+        if (!name) { alert("Enter your name to unbook."); return; }
+        if (booking.name !== name) { alert("Only the booker can unbook."); return; }
         tableRef.remove();
       } else {
-        if (!name) {
-          alert("Please enter your name to book a table.");
-          return;
-        }
-        tableRef.set({ name: name });
+        if (!name) { alert("Enter your name to book."); return; }
+        tableRef.set({ name });
       }
     }
-
-
-
 
     function listenForBookings() {
       db.ref(`bookings/${currentDate}`).on("value", snapshot => {
@@ -474,14 +279,13 @@
 
       if (day === "Tuesday") {
         renderSection("Cheese & Grain", cheeseTables, "cheese", container);
-      }
 
-      if (day === "Monday") {
-        renderSection("Crownhammer", crownTables, "crown", container);
-      }
-
-      if (day !== "Monday" && day !== "Tuesday") {
-        container.innerHTML = `<p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>`;
+        const order = getTuesdayOrder(currentDate);
+        if (order === 2 || order === 4) {
+          renderSection("Crown Game Guild", crownGuildTables, "crownGuild", container);
+        }
+      } else {
+        container.innerHTML = `<p style="margin-top: 20px;">No tables available for booking on ${day}s.</p>`;
       }
     }
 
@@ -496,8 +300,7 @@
         const tableKey = `${area}_table${i}`;
         const booking = allBookings[tableKey];
         const isBooked = !!booking;
-        const name = booking && booking.name ? booking.name : "";
-
+        const name = booking?.name || "";
 
         const div = document.createElement("div");
         div.className = "table";
@@ -521,14 +324,12 @@
       const range = document.getElementById("exportRange").value;
       const baseDate = new Date(document.getElementById("bookingDate").value);
       const dateList = [];
+      const days = range === "week" ? 7 : range === "month" ? 31 : range === "year" ? 366 : 1;
 
-      for (let i = 0; i < (range === 'week' ? 7 : range === 'month' ? 31 : range === 'year' ? 366 : 1); i++) {
+      for (let i = 0; i < days; i++) {
         const d = new Date(baseDate);
         d.setDate(d.getDate() + i);
-        const dateStr = d.getFullYear() + "-" +
-                        String(d.getMonth() + 1).padStart(2, '0') + "-" +
-                        String(d.getDate()).padStart(2, '0');
-        dateList.push(dateStr);
+        dateList.push(d.toISOString().split("T")[0]);
       }
 
       const bookingsSnapshot = await Promise.all(
@@ -539,7 +340,7 @@
       bookingsSnapshot.forEach(({ date, data }) => {
         Object.entries(data).forEach(([key, value]) => {
           const [area, table] = key.split("_table");
-          rows.push([date, area, `Table ${parseInt(table) + 1}`, value]);
+          rows.push([date, area, `Table ${parseInt(table) + 1}`, value.name || ""]);
         });
       });
 
@@ -558,31 +359,23 @@
       const firstWeekday = (firstDate.getDay() + 6) % 7;
       const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
 
-      const monthName = new Date(calendarYear, calendarMonth).toLocaleString("en-GB", {
+      label.textContent = new Date(calendarYear, calendarMonth).toLocaleString("en-GB", {
         month: "long",
         year: "numeric"
       });
-      label.textContent = monthName;
 
       const monthDates = [];
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(calendarYear, calendarMonth, d);
-        const dateStr = date.getFullYear() + "-" +
-                        String(date.getMonth() + 1).padStart(2, '0') + "-" +
-                        String(date.getDate()).padStart(2, '0');
-        monthDates.push(dateStr);
+        monthDates.push(date.toISOString().split("T")[0]);
       }
 
       const snapArray = await Promise.all(
-        monthDates.map(date =>
-          db.ref(`bookings/${date}`).get().then(snap => ({ date, data: snap.val() || {} }))
-        )
+        monthDates.map(date => db.ref(`bookings/${date}`).get().then(snap => ({ date, data: snap.val() || {} })))
       );
 
       calendarBookings = {};
-      snapArray.forEach(({ date, data }) => {
-        calendarBookings[date] = data;
-      });
+      snapArray.forEach(({ date, data }) => { calendarBookings[date] = data; });
 
       for (let i = 0; i < firstWeekday; i++) {
         calendar.appendChild(document.createElement("div"));
@@ -590,21 +383,22 @@
 
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(calendarYear, calendarMonth, day);
-        const dateStr = date.getFullYear() + "-" +
-                        String(date.getMonth() + 1).padStart(2, '0') + "-" +
-                        String(date.getDate()).padStart(2, '0');
+        const dateStr = date.toISOString().split("T")[0];
         const bookings = calendarBookings[dateStr] || {};
         const dayName = date.toLocaleDateString("en-GB", { weekday: "long" });
 
         let totalTables = 0;
         let validKeys = [];
 
-        if (dayName === "Monday") {
-          totalTables = crownTables;
-          validKeys = Array.from({ length: crownTables }, (_, i) => `crown_table${i}`);
-        } else if (dayName === "Tuesday") {
-          totalTables = cheeseTables;
-          validKeys = Array.from({ length: cheeseTables }, (_, i) => `cheese_table${i}`);
+        if (dayName === "Tuesday") {
+          totalTables += cheeseTables;
+          validKeys.push(...Array.from({ length: cheeseTables }, (_, i) => `cheese_table${i}`));
+
+          const order = getTuesdayOrder(dateStr);
+          if (order === 2 || order === 4) {
+            totalTables += crownGuildTables;
+            validKeys.push(...Array.from({ length: crownGuildTables }, (_, i) => `crownGuild_table${i}`));
+          }
         }
 
         const bookedCount = validKeys.filter(key => bookings[key]).length;
@@ -619,7 +413,6 @@
         else div.classList.add("partial");
 
         div.textContent = day;
-
         const summary = document.createElement("div");
         summary.className = "summary";
         summary.textContent = totalTables > 0 ? `${bookedCount}/${totalTables}` : "—";
@@ -642,21 +435,14 @@
     function highlightSelectedDay(dateStr) {
       document.querySelectorAll(".calendar-day").forEach(el => {
         el.classList.remove("selected");
-        if (el.dataset.date === dateStr) {
-          el.classList.add("selected");
-        }
+        if (el.dataset.date === dateStr) el.classList.add("selected");
       });
     }
 
     function changeMonth(offset) {
       calendarMonth += offset;
-      if (calendarMonth > 11) {
-        calendarMonth = 0;
-        calendarYear++;
-      } else if (calendarMonth < 0) {
-        calendarMonth = 11;
-        calendarYear--;
-      }
+      if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+      else if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
       generateCalendar();
     }
 
