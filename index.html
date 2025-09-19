@@ -402,7 +402,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const tunnelsTables = 2;
+    const cheeseTables = 2;
     const crownTables = 3;
 
     let currentDate = getTodayDate();
@@ -473,11 +473,11 @@
       const day = getDayName(currentDate);
 
       if (day === "Tuesday") {
-        renderSection("Cheese & Grain", tunnelsTables, "tunnels", container);
+        renderSection("Cheese & Grain", cheeseTables, "cheese", container);
       }
 
       if (day === "Monday") {
-        renderSection("The Crown", crownTables, "crown", container);
+        renderSection("Crownhammer", crownTables, "crown", container);
       }
 
       if (day !== "Monday" && day !== "Tuesday") {
@@ -603,8 +603,8 @@
           totalTables = crownTables;
           validKeys = Array.from({ length: crownTables }, (_, i) => `crown_table${i}`);
         } else if (dayName === "Tuesday") {
-          totalTables = tunnelsTables;
-          validKeys = Array.from({ length: tunnelsTables }, (_, i) => `tunnels_table${i}`);
+          totalTables = cheeseTables;
+          validKeys = Array.from({ length: cheeseTables }, (_, i) => `cheese_table${i}`);
         }
 
         const bookedCount = validKeys.filter(key => bookings[key]).length;
