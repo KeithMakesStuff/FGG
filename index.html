@@ -403,6 +403,7 @@
 
     const cheeseTables = 2;
     const crownTables = 3;
+    const guildTables = 6; 
 
     let currentDate = getTodayDate();
     let allBookings = {};
@@ -479,11 +480,14 @@
         renderSection("Crownhammer", crownTables, "crown", container);
       }
 
-      if (day !== "Monday" && day !== "Tuesday") {
-        container.innerHTML = `<p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>`;
+      if (day === "Thursday") {
+        renderSection("Crown Gaming Guild", guildTables, "guild", container);
       }
-    }
 
+      if (day !== "Monday" && day !== "Tuesday" && day !== "Thursday") {
+        container.innerHTML = `<p style="margin-top: 30px;">No tables available for booking on ${day}s.</p>`;
+    }
+}
     function renderSection(title, count, area, container) {
       const section = document.createElement("div");
       section.className = "section-wrapper";
@@ -599,12 +603,16 @@
         let validKeys = [];
 
         if (dayName === "Monday") {
-          totalTables = crownTables;
-          validKeys = Array.from({ length: crownTables }, (_, i) => `crown_table${i}`);
-        } else if (dayName === "Tuesday") {
+            totalTables = crownTables;
+            validKeys = Array.from({ length: crownTables }, (_, i) => `crown_table${i}`);
+      } else if (dayName === "Tuesday") {
           totalTables = cheeseTables;
           validKeys = Array.from({ length: cheeseTables }, (_, i) => `cheese_table${i}`);
-        }
+      } else if (dayName === "Thursday") {
+          totalTables = guildTables;
+          validKeys = Array.from({ length: guildTables }, (_, i) => `guild_table${i}`);
+}
+
 
         const bookedCount = validKeys.filter(key => bookings[key]).length;
 
